@@ -24,16 +24,24 @@ Hệ thống tích hợp toàn diện 7 trụ cột nghiệp vụ:
 4. **Điểm Danh Hai Chiều & Đánh Giá Chất Lượng Giáo Viên**:
    - **Điểm danh học sinh:** Phân loại rõ Có mặt Offline (tại lớp), Có mặt Online (qua Meet/Zoom), Đi trễ, Vắng có phép/không phép.
    - **Điểm danh giáo viên (Teacher Check-in / Timesheet):** Chấm công giờ dạy thực tế đối soát thù lao.
-   - **Đánh giá giáo viên:** Quản lý Đào tạo dự giờ đánh giá sư phạm định kỳ + Học viên khảo sát ẩn danh cuối khóa.
-5. **Kế Thừa & Tinh Gọn Tính Năng Moodle**:
+   - **Đánh giá giáo viên theo từng buổi học:** Học sinh đánh giá nhanh 1-5 sao và mức độ hiểu bài sau mỗi ca học để phát cảnh báo cờ đỏ kịp thời.
+5. **Hệ Thống Tin Nhắn & Thông Báo Tự Động (Automated Notification Engine)**:
+   - *Điểm danh sau 15 phút:* Tự động quét sĩ số, gửi tin báo vắng cho phụ huynh và báo cáo tổng hợp cho GV & Vận hành lớp (hoặc thông báo lớp đủ 100%).
+   - *Nhận xét sau buổi học:* Giáo viên lưu nhận xét thái độ và bài tập $\to$ Tự động gửi tin nhắn/Zalo ZNS tới Phụ huynh & Học sinh.
+   - *Nhắc lịch học trước 24h & 2h:* Tự động gửi tin nhắc lịch, link phòng học trực tuyến và dặn dò đồ dùng học tập cần chuẩn bị.
+6. **Phân Định 2 Mô Hình Khóa Học Trực Tuyến & Video Player Chống Tua**:
+   - *Mô hình 1 - Khóa học Online Tự học (Self-Paced):* Video nhúng YouTube **cấm tua nhanh** (chỉ được xem tuần tự hoặc tua lùi, mở khóa tua khi hoàn thành 95%), hỏi đáp theo timestamp video và ghi chú cá nhân.
+   - *Mô hình 2 - Lớp học Online Trực tiếp & Hybrid (Virtual Live & Hybrid):* Học trực tiếp qua link phòng học ảo (Meet/Zoom), có lịch học cố định, điểm danh từng buổi và gửi nhận xét.
+7. **Kế Thừa & Tinh Gọn Tính Năng Moodle & Frappe LMS**:
    - *Activity Completion & Drip Content:* Mở khóa bài học tuần tự theo tiến độ.
    - *Weighted Gradebook:* Sổ điểm đa trọng số (Chuyên cần %, BTVN %, Giữa kỳ %, Cuối khóa %).
    - *Question Bank & Random Quiz:* Ngân hàng câu hỏi & sinh đề trắc nghiệm ngẫu nhiên.
    - *Course Template Cloning:* Nhân bản khóa học/lớp học chỉ với 1 click.
-6. **Học Liệu & Bài Tập CNTT (Monaco Editor)**:
+   - *Public Verifiable Certificate:* Chứng chỉ số có link xác thực công khai `/verify/[code]`.
+8. **Học Liệu & Bài Tập CNTT (Monaco Editor)**:
    - Bài giảng nhúng YouTube, đính kèm slide PDF, source code mẫu.
    - Trình soạn thảo **Monaco Code Editor** làm bài tập trên web, nộp link GitHub / file ghi âm ngoại ngữ.
-7. **Thanh Toán Học Phí Đa Kênh**:
+9. **Thanh Toán Học Phí Đa Kênh**:
    - Sinh mã **VietQR** động (chuẩn Napas247), thanh toán thẻ **Visa/Mastercard**, và ghi nhận thu **tiền mặt/quẹt thẻ tại quầy** có xuất biên lai PDF.
 
 ---

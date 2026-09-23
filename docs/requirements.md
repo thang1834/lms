@@ -14,9 +14,14 @@ Hệ thống **LMS Center Platform** là giải pháp phần mềm quản lý to
 Hệ thống giải quyết triệt để các bài toán vận hành thực tế:
 - **Chuẩn hóa quản trị RBAC phân cấp:** Phân định rõ quyền hạn giữa Super Admin, Quản lý đào tạo (xếp lớp, đánh giá giáo viên), Chuyên viên vận hành lớp (chăm sóc học viên, điều phối), Giảng viên, Học viên và Phụ huynh.
 - **Xếp lịch học linh hoạt:** Hỗ trợ lịch 1 buổi/tuần, nhiều buổi/tuần, dời ngày, đổi phòng/meet link, bù buổi học dễ dàng.
+- **Phân định rõ 2 mô hình Học Trực Tuyến (Online Learning Taxonomy):**
+  1. *Khóa học Online Tự học / Video đóng gói (Self-Paced / Recorded Courses):* Học qua video quay sẵn nhúng YouTube, cấm tua video, làm quiz và code Monaco, hỏi đáp theo timestamp.
+  2. *Lớp học Online Trực tiếp & Hybrid (Virtual Live & Hybrid Classes):* Học theo lịch cố định với Giảng viên qua link phòng học trực tuyến (Google Meet/Zoom), điểm danh, nhắc lịch và nhận xét sau buổi.
+- **Hệ thống Tin nhắn & Thông báo Tự động (Automated Notification Engine):** Tự động bắn thông báo/Zalo/SMS về sĩ số điểm danh sau N phút, thông báo nhận xét của giáo viên sau buổi học, và nhắc nhở lịch học trước 24h/2h kèm link lớp và dặn dò.
+- **Cơ chế Chống tua Video (Anti-Seeking Video Player):** Ngăn học viên tua nhanh video lý thuyết để chống học đối phó; chỉ cho phép tua lại hoặc tua trong phạm vi đã xem; mở khóa tua tự do sau khi hoàn thành 100%.
 - **Tự động hóa điểm danh hai chiều:** Điểm danh học viên lớp Offline, Online, Hybrid và Chấm công giáo viên (Timesheet).
 - **Môi trường thực hành lập trình trực tuyến:** Tích hợp Monaco Code Editor cho môn CNTT, nộp link GitHub/zip, hỗ trợ ghi âm bài nói cho ngoại ngữ.
-- **Kế thừa & Nâng cấp các tính năng tinh hoa từ Moodle:** Sổ điểm đa trọng số (Weighted Gradebook), Mở khóa bài học theo tiến độ (Drip Content), Ngân hàng câu hỏi & Đề thi trắc nghiệm (Question Bank & Quiz), Nhân bản khóa học (Course Cloning).
+- **Kế thừa & Nâng cấp các tính năng tinh hoa từ Moodle & Frappe LMS:** Sổ điểm đa trọng số, Drip Content tuần tự, Timestamped Q&A, Ghi chú cá nhân, Chứng chỉ số xác thực công khai.
 
 ---
 
@@ -151,6 +156,57 @@ Tham khảo từ kiến trúc hiện đại của **Frappe LMS** (`https://githu
 
 ---
 
+### Phân hệ 7: Hệ Thống Tin Nhắn & Thông Báo Tự Động (Automated Notification Engine)
+
+Hệ thống cung cấp một engine gửi tin nhắn đa kênh (Zalo ZNS, SMS, Web Push, Email và In-App Notification) hoạt động theo các trigger nghiệp vụ tự động:
+
+- **FR-NOTIF-01 (Cảnh báo điểm danh sau N phút - Attendance Broadcast):**
+  - Cấu hình linh hoạt theo lớp học: `attendanceAlertMinutes` (mặc định $N = 15$ phút sau giờ vào lớp).
+  - Khi hết $N$ phút, hệ thống tự động kiểm tra bảng `session_attendances`:
+    - **Trường hợp lớp còn vắng học viên:** Tự động gửi thông báo tổng hợp tới Giảng viên và Chuyên viên Vận hành lớp: *"Lớp [Mã lớp] hiện có mặt X/Y bạn, vắng Z bạn: [Danh sách tên học sinh vắng]"*. Đồng thời tự động gửi tin nhắn đến từng Phụ huynh của học sinh vắng: *"Kính gửi phụ huynh, buổi học [Mã lớp] đã bắt đầu lúc [Giờ], hiện hệ thống chưa ghi nhận bé [Tên] có mặt tại lớp. Vui lòng kiểm tra hoặc liên hệ Chuyên viên Vận hành [SĐT]"*.
+    - **Trường hợp lớp đi đủ:** Tự động gửi thông báo xác nhận: *"Lớp [Mã lớp] đã đủ quân số 100% (X/X học viên). Chúc thầy cô và các bạn có buổi học hiệu quả!"*.
+- **FR-NOTIF-02 (Tự động gửi nhận xét buổi học tới Phụ huynh & Học sinh - Teacher Feedback Dispatch):**
+  - Ngay sau khi Giảng viên hoàn tất nhập nhận xét và lưu sổ buổi học (`session_attendances.teacherNotes`, `attitudeRating`), hệ thống kích hoạt trigger tự động định dạng và gửi tin nhắn/Zalo ZNS tới Phụ huynh & Học sinh:
+    - *Nội dung:* *"Trung tâm xin gửi nhận xét buổi học ngày [Ngày] môn [Tên môn] của bé [Tên]: Thái độ: [Chăm chú/Tích cực], Thực hành trên lớp: [Đạt/Cần cố gắng thêm], Dặn dò từ Thầy/Cô: [Lời dặn] - Xem chi tiết tại [Link]"*.
+- **FR-NOTIF-03 (Nhắc nhở buổi học sắp diễn ra - Upcoming Class Reminder):**
+  - Hệ thống chạy tiến trình định kỳ (Cron / Scheduled Job) quét các buổi học sắp tới:
+    - **Nhắc trước 24 giờ (1 ngày):** Gửi thông báo nhắc lịch học, thời gian, phòng học và danh mục dặn dò (`preparationNotes`: ví dụ mang laptop sạc đầy, cài đặt môi trường NodeJS/Python, hoặc nộp bài tập còn nợ).
+    - **Nhắc trước 2 giờ (hoặc tùy biến theo setting):** Gửi nhắc nhở khẩn, đính kèm link phòng học ảo (Google Meet / Zoom URL) nếu là lớp Online hoặc Hybrid.
+
+---
+
+### Phân hệ 8: Trình Phát Video Chống Tua Cho Khóa Học Tự Học (Anti-Seeking Video Player)
+
+Nhằm đảm bảo học viên thực sự tiếp thu kiến thức và không "học đối phó", trình phát video nhúng YouTube trong các khóa học online đóng gói (Self-Paced) được trang bị cơ chế kiểm soát tiến độ nghiêm ngặt:
+
+- **FR-VID-01 (Cấm tua nhanh - Block Forward Seeking):**
+  - Hệ thống lưu trữ biến trạng thái `maxWatchedSeconds` (thời điểm xem xa nhất mà học viên đã thực sự theo dõi).
+  - Học viên **không được phép tua nhanh vượt quá `maxWatchedSeconds`**. Mọi thao tác click chuột trên thanh tiến trình (progress bar) tới vị trí tương lai đều bị chặn và trình phát tự động đưa về mốc thời gian xem hợp lệ gần nhất.
+  - Học viên **được phép tua lùi (Seek Backward)** tự do để xem lại kiến thức cũ bất cứ lúc nào.
+- **FR-VID-02 (Heartbeat & Chống gian lận Client-Side - Anti-Cheat Heartbeat):**
+  - Trong quá trình phát video, client gửi heartbeat mỗi $5$ giây về API `POST /api/courses/[id]/lessons/[lessonId]/heartbeat` kèm thời lượng thực tế đã xem.
+  - Backend kiểm tra tính hợp lệ: Nếu mốc thời gian xem giữa 2 lần heartbeat tăng đột biến bất thường (ví dụ học viên can thiệp DevTools chỉnh `currentTime` nhảy cóc $5$ phút chỉ trong $2$ giây), hệ thống từ chối cập nhật và ghi nhận cờ gian lận.
+- **FR-VID-03 (Mở khóa tua tự do sau khi hoàn thành 100% - Unlock Seeking Upon Completion):**
+  - Khi học viên đã xem video đạt $\ge 95\%$ thời lượng bài giảng (hoặc 100% tùy cấu hình), bài học được ghi nhận trạng thái `isCompleted = true`.
+  - Từ thời điểm này trở đi, học viên được cấp quyền `allowFreeSeeking = true` để tự do tua nhanh/chậm mọi đoạn video phục vụ ôn tập và tra cứu.
+
+---
+
+### Phân hệ 9: Phân Định Rõ Ràng 2 Mô Hình Khóa Học Trực Tuyến (Dual Online Learning Paradigms)
+
+Hệ thống hỗ trợ song song và phân tách mạch lạc hai hình thức học tập trực tuyến đáp ứng trọn vẹn nhu cầu của trung tâm:
+
+| Tiêu Chí So Sánh | 1. Khóa Học Online Đóng Gói (Self-Paced Online Course) | 2. Lớp Học Online Trực Tiếp & Hybrid (Virtual Live & Hybrid Classes) |
+| :--- | :--- | :--- |
+| **Bản chất đào tạo** | Học viên tự học theo nhịp độ cá nhân qua video bài giảng thu sẵn (Video On-Demand). | Lớp học tương tác thời gian thực với Giảng viên & Trợ giảng qua phòng học trực tuyến. |
+| **Thời khóa biểu** | Không có lịch cố định. Học viên chủ động học bất kỳ lúc nào 24/7. | Có lịch học định kỳ cố định (ví dụ: T3-T5 lúc 19:30 - 21:30). |
+| **Trải nghiệm Video** | Nhúng YouTube Player có **cơ chế cấm tua video**; tích hợp hỏi đáp Timestamped Q&A và Ghi chú cá nhân. | Giảng dạy trực tiếp qua link phòng học ảo (`meetingUrl`: Google Meet / Zoom / MS Teams); buổi học có thể ghi hình lại để học sinh xem lại sau. |
+| **Quy trình Điểm danh** | Không áp dụng điểm danh theo ca; tiến độ được đo bằng % video đã xem và số bài tập/quiz đã nộp. | **Bắt buộc điểm danh từng buổi:** Check-in qua web / OTP phòng học ảo / Giáo viên điểm danh tay; kích hoạt cảnh báo vắng sau 15 phút. |
+| **Chăm sóc & Nhắc nhở** | Hệ thống tự động gửi email/thông báo khi học viên không đăng nhập quá 7 ngày. | **Tự động nhắc lịch học trước 24h/2h** kèm link Meet; gửi nhận xét của giáo viên sau mỗi buổi học về cho phụ huynh. |
+| **Chứng nhận hoàn thành** | Hoàn thành tất cả bài học tuần tự (Drip content) + đạt điểm Quiz $\ge 80\%$. | Dựa trên sổ điểm tổng kết đa trọng số (Chuyên cần $\ge 80\%$, BTVN, Thi giữa kỳ, Đồ án cuối khóa). |
+
+---
+
 ## 4. Bổ Sung Ma Trận User Stories (Acceptance Criteria)
 
 | Mã Story | Đối tượng | Hành động (User Story) | Tiêu chí chấp nhận (Acceptance Criteria) |
@@ -164,4 +220,9 @@ Tham khảo từ kiến trúc hiện đại của **Frappe LMS** (`https://githu
 | **US-FRP-02** | Học viên | Nhận chứng chỉ có link xác thực công khai | - Hoàn thành khóa học tự động cấp chứng chỉ.<br>- Link `/verify/[code]` hiển thị thông tin khóa học và tên học viên công khai. |
 | **US-MDL-01** | Quản lý Đào tạo | Cấu hình trọng số điểm cho khóa học | - Nhập % chuyên cần, % BTVN, % thi giữa kỳ, % đồ án cuối kỳ (tổng = 100%).<br>- Sổ điểm tự động tính điểm trung bình môn theo đúng công thức trọng số. |
 | **US-MDL-02** | Quản lý Đào tạo | Nhân bản khóa học sang lớp mới | - Bấm "Nhân bản khóa học" sao chép đầy đủ nội dung bài học, video và BTVN.<br>- Không sao chép học viên hay điểm số của lớp cũ. |
+| **US-NOTIF-01** | Vận hành / Phụ huynh | Tự động nhận thông báo sĩ số sau 15 phút mở lớp | - Sau $N$ phút (mặc định 15p), hệ thống quét dữ liệu điểm danh.<br>- Bắn tin nhắn danh sách vắng cho Vận hành & GV; gửi tin nhắn riêng cho Phụ huynh học sinh vắng. |
+| **US-NOTIF-02** | Phụ huynh / Học sinh | Nhận tin nhắn nhận xét của giáo viên sau ca học | - Ngay khi GV lưu nhận xét buổi học, hệ thống gửi Zalo/SMS/Push cho Phụ huynh & Học sinh tóm tắt thái độ và kết quả trên lớp. |
+| **US-NOTIF-03** | Học viên / Phụ huynh | Nhận thông báo nhắc lịch học trước 24h và 2h | - Cron tự động quét và gửi tin nhắn trước 24h (kèm dặn dò chuẩn bị) và trước 2h (kèm link Google Meet/Zoom). |
+| **US-VID-01** | Học viên | Xem video bài giảng khóa tự học (Self-Paced) | - Không thể kéo tua tiến thanh thời lượng nếu chưa xem tới mốc đó.<br>- Có thể tua lùi để nghe lại.<br>- Gửi heartbeat 5s/lần cập nhật tiến độ. |
+| **US-VID-02** | Học viên đã hoàn thành | Ôn tập lại bài giảng video sau khi học xong | - Sau khi xem đạt 100% thời lượng, thanh thời gian mở khóa hoàn toàn để học viên tự do tua nhanh/chậm ôn tập. |
 

@@ -158,9 +158,90 @@ sequenceDiagram
 
 ---
 
-## 5. Bố Cục Giao Diện Màn Hình Trọng Yếu (Key Wireframe Schematics)
+## 5. Luồng 5: Động Cơ Thông Báo Tự Động (Điểm Danh Sau 15p, Nhận Xét Sau Buổi, Nhắc Lịch Học)
 
-### 5.1 Giao diện Học viên làm bài tập CNTT (Monaco Code Workspace)
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Parent as Phụ huynh
+    actor Student as Học viên
+    actor Teacher as Giảng viên
+    actor Coord as Chuyên viên Vận hành
+    participant Cron as Hệ thống Cron / Trigger
+    participant API as Backend Notification Engine
+    participant Gateway as Zalo ZNS / SMS Gateway
+
+    Note over Cron, Gateway: Kịch bản A: Sau 15 phút vào lớp (Điểm danh vắng/đủ)
+    Cron ->> API: POST /api/sessions/:id/attendance-alert
+    alt Lớp có học sinh vắng
+        API ->> Gateway: Bắn tin nhắn đến từng Phụ huynh của học sinh vắng
+        Gateway -->> Parent: "Bé [Tên] chưa có mặt tại lớp [Mã lớp] bắt đầu lúc [Giờ]..."
+        API ->> Gateway: Gửi báo cáo tổng hợp cho GV & Vận hành lớp
+        Gateway -->> Teacher: "Lớp hiện có 18/20 bạn, vắng 2 bạn: [Tên]"
+        Gateway -->> Coord: "Lớp hiện có 18/20 bạn, vắng 2 bạn: [Tên]"
+    else Lớp đi đủ 100%
+        API ->> Gateway: Gửi tin xác nhận lớp đủ quân số cho GV & Vận hành
+    end
+
+    Note over Teacher, Gateway: Kịch bản B: Sau buổi học (Giáo viên nhận xét)
+    Teacher ->> API: Lưu nhận xét từng học sinh (thái độ, BTVN trên lớp)
+    API ->> Gateway: Tự động gửi tin nhắn nhận xét đến Phụ huynh & Học sinh
+    Gateway -->> Parent: "Nhận xét buổi học môn [Môn] của bé [Tên]: Thái độ tốt, thực hành đạt..."
+
+    Note over Cron, Gateway: Kịch bản C: Nhắc nhở lịch học trước 24h và 2h
+    Cron ->> API: Quét các buổi học trong 24h & 2h tới
+    API ->> Gateway: Bắn tin nhắc lịch kèm dặn dò đồ dùng học tập & Link Meet/Zoom nếu học Online/Hybrid
+    Gateway -->> Student: "Nhắc lịch học lớp [Mã lớp] vào ngày mai [Giờ]. Lưu ý: mang laptop..."
+    Gateway -->> Parent: "Nhắc lịch học của bé [Tên]..."
+```
+
+---
+
+## 6. Luồng 6: Trình Phát Video Bài Giảng Chống Tua (Anti-Seeking Video Player Flow)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Student as Học viên
+    participant Player as Restricted Video Player (Client)
+    participant API as Backend Server
+    participant DB as PostgreSQL Database
+
+    Student ->> Player: Bắt đầu phát video bài giảng YouTube
+    Player ->> API: GET /api/courses/:id/lessons/:id/progress
+    API ->> DB: Lấy maxWatchedSeconds và allowFreeSeeking
+    DB -->> API: maxWatchedSeconds = 120s, allowFreeSeeking = false
+    API -->> Player: Khởi chạy video từ giây 120
+
+    alt Học viên cố tình click tua tới giây 300 (Chưa từng xem)
+        Student ->> Player: Kéo tua thanh thời gian tới 05:00 (300s)
+        Player ->> Player: Phát hiện 300s > maxWatchedSeconds (120s)
+        Player ->> Student: Hiển thị cảnh báo: "Vui lòng xem tuần tự bài giảng, không tua nhanh"
+        Player ->> Player: Ép tua trở lại vị trí 120s
+    else Học viên tua lùi về giây 60 để nghe lại
+        Student ->> Player: Kéo tua về 01:00 (60s)
+        Player ->> Player: Chấp nhận thao tác (60s <= maxWatchedSeconds)
+        Player ->> Student: Phát lại từ giây 60
+    end
+
+    loop Heartbeat định kỳ mỗi 5 giây xem hợp lệ
+        Player ->> API: POST /api/courses/:id/lessons/:id/heartbeat (currentSeconds = 125, delta = 5s)
+        API ->> API: Xác thực tốc độ xem hợp lệ (Không gian lận)
+        API ->> DB: Cập nhật maxWatchedSeconds = 125s
+    end
+
+    opt Khi xem đạt >= 95% thời lượng bài học
+        API ->> DB: Cập nhật isCompleted = true, allowFreeSeeking = true
+        API -->> Player: Mở khóa thanh tua tự do (Free Seeking Unlocked)
+        Player -->> Student: Thông báo: "Chúc mừng bạn đã hoàn thành bài học! Từ bây giờ bạn có thể tự do tua ôn tập."
+    end
+```
+
+---
+
+## 7. Bố Cục Giao Diện Màn Hình Trọng Yếu (Key Wireframe Schematics)
+
+### 7.1 Giao diện Học viên làm bài tập CNTT (Monaco Code Workspace)
 ```
 +-----------------------------------------------------------------------------+
 | [← Quay lại lớp]  Bài tập 03: Xây dựng Todo List với React 19   [Deadline: 23:59] |
@@ -177,24 +258,47 @@ sequenceDiagram
 | [📊 sample-todos.json (Tải về)]       |                                     |
 |                                       | +---------------------------------+ |
 |                                       | | [💾 Lưu nháp]   [🚀 NỘP BÀI TẬP] | |
+|                                       | +---------------------------------+ |
 +---------------------------------------+-------------------------------------+
 ```
 
-### 5.2 Giao diện Giảng viên Điểm danh Lớp Hybrid (Attendance Sheet)
+### 7.2 Giao diện Giảng viên Điểm danh Lớp Hybrid (Attendance Sheet)
 ```
 +-----------------------------------------------------------------------------+
 | Lớp: LMS-FE-K32 (Hybrid) | Buổi 5 (23/09/2026) | [Check-out ca dạy: 21:30]   |
 +-----------------------------------------------------------------------------+
-| Tìm học viên: [ Tìm kiếm tên / mã... ]         Sĩ số: 18 học viên           |
+| Tìm học viên: [ Tìm kiếm tên / mã... ]         Sĩ số: 18/20 học viên (Vắng: 2) |
+| [⚠️ Đã gửi cảnh báo vắng sau 15p tới 2 phụ huynh lúc 19:45]                 |
 |                                                                             |
 | #  Mã HV      Họ và tên        Trạng thái tham gia          Ghi chú buổi học |
-| 1  HV-001     Trần Thị Mai     (•) Offline  ( ) Online      [..............] |
+| 1  HV-001     Trần Thị Mai     (•) Offline  ( ) Online      [Thái độ tốt   ] |
 |                                ( ) Đi trễ   ( ) Vắng                         |
 | 2  HV-002     Lê Hoàng Nam     ( ) Offline  (•) Online      [Học qua Meet  ] |
 |                                ( ) Đi trễ   ( ) Vắng                         |
-| 3  HV-003     Phạm Minh Đức    ( ) Offline  ( ) Online      [Xin phép trễ  ] |
-|                                (•) Đi trễ (15p) ( ) Vắng                     |
+| 3  HV-003     Phạm Minh Đức    ( ) Offline  ( ) Online      [Sốt xin nghỉ  ] |
+|                                ( ) Đi trễ   (•) Vắng                         |
 +-----------------------------------------------------------------------------+
 | [ Tải lại ]                                         [ 💾 LƯU ĐIỂM DANH ]    |
 +-----------------------------------------------------------------------------+
+```
+
+### 7.3 Giao diện Khóa Học Online Tự Học với Video Chống Tua & Timestamped Q&A
+```
++-----------------------------------------------------------------------------+
+| [← Danh sách bài học]  Bài 04: Quản lý Global State với Zustand             |
++-------------------------------------------------------+---------------------+
+| TRÌNH PHÁT VIDEO BÀI GIẢNG YOUTUBE (CHỐNG TUA)        | HỎI ĐÁP & GHI CHÚ   |
+| ----------------------------------------------------- | ------------------- |
+| +---------------------------------------------------+ | [❓ Thảo luận] [📝] |
+| |                                                   | |                     |
+| |              [ Video YouTube Embed ]              | | [02:15] Nam:        |
+| |                                                   | | Store này có lưu    |
+| |                                                   | | localStorage k ạ?   |
+| +---------------------------------------------------+ |  ↳ [GV Trả lời] ✅  |
+| [▶ Play] 02:15 / 15:40 [🔒 Đã xem: 02:15 - Cấm tua]   | Có em, dùng persist |
+| [======•--------------------------------------------] |                     |
+| (• Đang khóa tua tiến | Chỉ được tua lùi hoặc nghe lại) | +-----------------+ |
+|                                                       | | Nhập câu hỏi... | |
+| [📄 Tải Slide PDF]   [💻 Tải Code Mẫu]   [✅ Hoàn thành] | +-----------------+ |
++-------------------------------------------------------+---------------------+
 ```

@@ -341,3 +341,122 @@ Toàn bộ các giao tiếp dữ liệu giữa Client và Server trong hệ th�
     }
   }
   ```
+
+---
+
+### 2.6 Nhóm Thông Báo & Tin Nhắn Tự Động (Automated Notifications)
+
+#### `POST /api/sessions/:sessionId/attendance-alert`
+- **Mô tả:** Trigger quét điểm danh sau $N$ phút (mặc định 15p) kể từ giờ bắt đầu buổi học. Nếu lớp vắng, tự động bắn tin nhắn Zalo/SMS cho Phụ huynh học sinh vắng và báo cáo tổng hợp cho GV & Vận hành lớp. Nếu lớp đủ, gửi tin xác nhận sĩ số 100%.
+- **Quyền hạn:** `SYSTEM_CRON`, `COORDINATOR`, `ADMIN`.
+- **Response 200:**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "sessionId": "sess-uuid-101",
+      "className": "LMS-FE-K32",
+      "totalEnrolled": 20,
+      "presentCount": 18,
+      "absentCount": 2,
+      "absentStudents": ["Nguyễn Văn A", "Trần Thị B"],
+      "alertsSent": {
+        "parentsNotified": 2,
+        "coordinatorsNotified": 1,
+        "teachersNotified": 1
+      },
+      "status": "ALERTED_ABSENT",
+      "sentAt": "2026-09-23T19:45:00.000Z"
+    }
+  }
+  ```
+
+#### `POST /api/sessions/:sessionId/feedbacks/notify`
+- **Mô tả:** Tự động gửi nhận xét buổi học của giáo viên tới từng Phụ huynh và Học sinh sau ca dạy.
+- **Quyền hạn:** `TEACHER`, `COORDINATOR`, `ADMIN`.
+- **Zod Schema:**
+  ```typescript
+  export const BroadcastFeedbackSchema = z.object({
+    sessionId: z.string().uuid(),
+    notifyChannels: z.array(z.enum(["ZALO_ZNS", "SMS", "IN_APP", "PUSH", "EMAIL"])).default(["IN_APP", "ZALO_ZNS"])
+  });
+  ```
+- **Response 200:**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "sessionId": "sess-uuid-101",
+      "recipientCount": 18,
+      "dispatchedAt": "2026-09-23T21:40:00.000Z",
+      "message": "Đã gửi nhận xét của giáo viên tới 18 phụ huynh và học viên."
+    }
+  }
+  ```
+
+#### `POST /api/cron/class-reminders`
+- **Mô tả:** Cron job tự động quét các buổi học sắp diễn ra (trước 24h và trước 2h) để gửi tin nhắn nhắc nhở, đính kèm link phòng học trực tuyến (Meet/Zoom) và dặn dò đồ dùng học tập (`preparationNotes`).
+- **Quyền hạn:** `SYSTEM_CRON` (Bảo vệ bằng `CRON_SECRET` Bearer Token).
+- **Response 200:**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "scannedSessions": 8,
+      "reminders24hSent": 45,
+      "reminders2hSent": 38,
+      "executedAt": "2026-09-23T10:00:00.000Z"
+    }
+  }
+  ```
+
+---
+
+### 2.7 Nhóm Trình Phát Video & Chống Tua Cho Khóa Học Tự Học (Anti-Seeking Video Player)
+
+#### `POST /api/courses/:courseId/lessons/:lessonId/heartbeat`
+- **Mô tả:** Heartbeat định kỳ 5 giây gửi từ client trong lúc phát video bài giảng. Backend kiểm tra mốc thời gian xem hợp lệ (chống can thiệp `currentTime` bất thường) và mở khóa tua tự do khi hoàn thành 100%.
+- **Quyền hạn:** `STUDENT`.
+- **Zod Schema:**
+  ```typescript
+  export const VideoHeartbeatSchema = z.object({
+    currentSeconds: z.number().nonnegative(),
+    playbackRate: z.number().min(0.25).max(2.0).default(1.0),
+    totalDuration: z.number().positive(),
+    clientTimestamp: z.number()
+  });
+  ```
+- **Response 200:**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "lessonId": "les-uuid-1",
+      "maxWatchedSeconds": 150,
+      "isCompleted": false,
+      "allowFreeSeeking": false,
+      "percentComplete": 45.2,
+      "isCheatDetected": false
+    }
+  }
+  ```
+
+#### `GET /api/courses/:courseId/lessons/:lessonId/progress`
+- **Mô tả:** Lấy thông tin tiến độ xem video và quyền tua của học viên khi mở bài học.
+- **Quyền hạn:** `STUDENT`.
+- **Response 200:**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "lessonId": "les-uuid-1",
+      "watchedSeconds": 150,
+      "maxWatchedSeconds": 150,
+      "totalDuration": 320,
+      "isCompleted": false,
+      "allowFreeSeeking": false,
+      "resumeAtSeconds": 150
+    }
+  }
+  ```
+

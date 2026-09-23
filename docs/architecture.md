@@ -20,7 +20,7 @@ graph TD
         StudentUI["Student Portal (/student)"]
         ParentUI["Parent Portal (/parent)"]
         Monaco["Monaco Code Editor"]
-        YTPlayer["YouTube Player Embed"]
+        RestrictedPlayer["Restricted Video Player (Anti-Seeking Engine)"]
         QRCard["VietQR Component"]
     end
 
@@ -35,6 +35,8 @@ graph TD
         RouteHandlers["Next.js Route Handlers (REST APIs)"]
         ZodValidator["Zod Schema Validation Engine"]
         SchedulerService["Flexible Scheduler Engine (Recurrence & Reschedule)"]
+        NotificationEngine["Automated Notification Engine (Triggers & Scheduled Jobs)"]
+        VideoSecurityEngine["Anti-Cheat Video Progress & Heartbeat Validator"]
         Services["Domain Services: Attendance, Grading, Payment, Evaluation"]
     end
 
@@ -45,6 +47,7 @@ graph TD
 
     subgraph ExternalServices ["5. Dịch Vụ Tích Hợp Thứ Ba (Third-Party Services)"]
         YouTube["YouTube IFrame API"]
+        MessagingGateways["Messaging Gateways (Zalo ZNS / SMS / Web Push / Email)"]
         VietQR["Napas247 VietQR Generator"]
         Storage["Cloud Storage (Cloudinary/S3)"]
         PDFGen["@react-pdf/renderer (Biên lai / Chứng chỉ)"]
@@ -57,6 +60,8 @@ graph TD
     DataLayer --> Postgres
     ApplicationLayer --> ExternalServices
     ClientLayer -.-> YouTube
+    RestrictedPlayer -.-> VideoSecurityEngine
+    NotificationEngine -.-> MessagingGateways
 ```
 
 ---
@@ -105,6 +110,12 @@ erDiagram
     User ||--o{ LessonDiscussion : posts_qa
     Lesson ||--o{ LessonNote : has_notes
     StudentProfile ||--o{ LessonNote : writes_notes
+    Lesson ||--o{ LessonProgress : tracks
+    StudentProfile ||--o{ LessonProgress : achieves
+    
+    ClassSession ||--o{ NotificationLog : triggers
+    NotificationTemplate ||--o{ NotificationLog : formats
+    User ||--o{ NotificationLog : receives
     
     Class ||--o{ Assignment : assigns
     Assignment ||--o{ Material : attaches
@@ -119,6 +130,7 @@ erDiagram
     StudentProfile ||--o{ TuitionInvoice : billed_to
     TuitionInvoice ||--o{ PaymentTransaction : settles
 ```
+
 
 ---
 
@@ -205,6 +217,7 @@ erDiagram
     - `title` (String): Tên khóa học.
     - `slug` (String, Unique).
     - `description` (Text).
+    - `courseType` (Enum: `SELF_PACED_ONLINE`, `INSTRUCTOR_LED`): Phân loại khóa học tự học (cấm tua video) hay lớp có giáo viên.
     - `subjectType` (Enum: `IT`, `LANGUAGE`, `GENERAL`).
     - `thumbnailUrl` (String, Nullable).
     - `price` (Decimal): Học phí niêm yết.
@@ -239,7 +252,7 @@ erDiagram
     - `id` (UUID, PK).
     - `courseId` (UUID, FK -> `courses.id`).
     - `name` (String): Mã lớp (ví dụ: `FE-K32`).
-    - `classType` (Enum: `OFFLINE`, `ONLINE`, `HYBRID`).
+    - `classType` (Enum: `OFFLINE`, `ONLINE_VIRTUAL`, `HYBRID`).
     - `mainTeacherId` (UUID, FK -> `teacher_profiles.id`): Giảng viên chính.
     - `taTeacherId` (UUID, FK -> `teacher_profiles.id`, Nullable): Trợ giảng.
     - `coordinatorId` (UUID, FK -> `users.id`, Nullable): **Chuyên viên Vận hành lớp & Chăm sóc học viên (Class Coordinator / Care)**.
@@ -247,6 +260,9 @@ erDiagram
     - `meetUrl` (String, Nullable): Link Google Meet / Zoom mặc định.
     - `startDate` (Date), `endDate` (Date).
     - `scheduleRule` (JSON): Quy tắc lịch học lặp lại (ví dụ: `[{"dayOfWeek": 2, "startTime": "19:30", "endTime": "21:30"}, {"dayOfWeek": 4, "startTime": "19:30", "endTime": "21:30"}]`).
+    - `attendanceAlertMinutes` (Int, Default `15`): Thời gian phát cảnh báo sĩ số vắng/đủ sau khi buổi học bắt đầu.
+    - `reminderHours` (JSON, Default `[24, 2]`): Các mốc thời gian tự động bắn tin nhắn nhắc lịch học trước buổi.
+    - `allowVideoSeeking` (Boolean, Default `false`): Mặc định cấm tua đối với video tự học.
     - `maxStudents` (Int, Default `20`).
     - `status` (Enum: `UPCOMING`, `ACTIVE`, `COMPLETED`, `CANCELLED`).
 
@@ -260,8 +276,11 @@ erDiagram
     - `assignedTeacherId` (UUID, FK -> `teacher_profiles.id`): Giáo viên phụ trách buổi này (hỗ trợ phân công giáo viên dạy thay).
     - `roomName` (String, Nullable): Phòng học riêng của buổi này (nếu đổi phòng).
     - `meetUrl` (String, Nullable): Link meet riêng của buổi này.
+    - `meetingPlatform` (Enum: `GOOGLE_MEET`, `ZOOM`, `MS_TEAMS`, `JITSI`, Nullable).
+    - `preparationNotes` (Text, Nullable): Dặn dò chuẩn bị trước giờ học (laptop, tài liệu, bài tập nợ) để gửi tin nhắn nhắc nhở.
     - `topic` (String, Nullable): Chủ đề giảng dạy.
     - `status` (Enum: `SCHEDULED`, `RESCHEDULED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`).
+    - `attendanceAlertSentAt` (Timestamp, Nullable): Thời điểm hệ thống đã tự động gửi tin nhắn báo sĩ số.
     - `rescheduleReason` (Text, Nullable): Lý do dời lịch hoặc bù buổi.
     - `originalDate` (Date, Nullable): Ngày học ban đầu nếu là buổi dời/bù.
 
@@ -425,6 +444,46 @@ erDiagram
 
 ---
 
+#### Nhóm 8: Tiến Độ Học Tập & Kiểm Soát Video Chống Tua (Anti-Seeking Video Progress)
+
+29. **`lesson_progress`** (Quản lý tiến độ xem video & cấm tua đối phó):
+    - `id` (UUID, PK).
+    - `lessonId` (UUID, FK -> `lessons.id`).
+    - `studentId` (UUID, FK -> `student_profiles.id`).
+    - `watchedSeconds` (Int, Default `0`): Tổng số giây đã thực sự xem.
+    - `maxWatchedSeconds` (Int, Default `0`): Mốc giây xa nhất đã xem (dùng để chặn thao tác tua vượt mốc).
+    - `totalDuration` (Int, Default `0`): Tổng thời lượng bài giảng (lấy từ YouTube API).
+    - `isCompleted` (Boolean, Default `false`): Đánh dấu hoàn thành khi `maxWatchedSeconds >= totalDuration * 0.95`.
+    - `allowFreeSeeking` (Boolean, Default `false`): Chỉ bật `true` khi học sinh đã hoàn thành bài học lần đầu tiên, cho phép tự do tua để ôn tập.
+    - `lastHeartbeatAt` (Timestamp): Mốc thời gian lần heartbeat gần nhất để chống nhảy cóc (cheat detection).
+    - Unique Constraint: `(lessonId, studentId)`.
+
+---
+
+#### Nhóm 9: Hệ Thống Thông Báo & Tin Nhắn Tự Động (Automated Notification Engine)
+
+30. **`notification_templates`** (Mẫu nội dung thông báo đa kênh):
+    - `id` (UUID, PK).
+    - `code` (String, Unique): Mã mẫu thông báo (`ATTENDANCE_ALERT_ABSENT`, `ATTENDANCE_ALERT_FULL`, `TEACHER_SESSION_FEEDBACK`, `CLASS_REMINDER_24H`, `CLASS_REMINDER_2H`).
+    - `title` (String): Tiêu đề thông báo.
+    - `contentTemplate` (Text): Mẫu nội dung hỗ trợ placeholder (`{{studentName}}`, `{{className}}`, `{{sessionTime}}`, `{{meetingUrl}}`, `{{feedbackSummary}}`).
+    - `channels` (JSON): Mảng kênh áp dụng (ví dụ: `["ZALO_ZNS", "SMS", "IN_APP", "PUSH", "EMAIL"]`).
+    - `isActive` (Boolean, Default `true`).
+
+31. **`notification_logs`** (Nhật ký phát tin nhắn & trạng thái chuyển phát):
+    - `id` (UUID, PK).
+    - `templateCode` (String): Mã mẫu áp dụng.
+    - `recipientUserId` (UUID, FK -> `users.id`): Người nhận (Phụ huynh, Học sinh, Giáo viên hoặc Vận hành).
+    - `recipientPhone` (String, Nullable): Số điện thoại nhận Zalo/SMS.
+    - `sessionId` (UUID, FK -> `class_sessions.id`, Nullable): Gắn với buổi học nào.
+    - `channel` (Enum: `ZALO_ZNS`, `SMS`, `IN_APP`, `PUSH`, `EMAIL`).
+    - `payload` (JSON): Dữ liệu truyền vào template.
+    - `sentStatus` (Enum: `PENDING`, `SENT`, `DELIVERED`, `FAILED`).
+    - `errorDetails` (Text, Nullable).
+    - `createdAt` (Timestamp, Default `now()`).
+
+---
+
 ## 3. Ma Trận Phân Quyền Hạt Nhân RBAC (Granular RBAC Matrix)
 
 | Chức năng / Permission Code | Super Admin | Academic Manager (Giáo vụ) | Class Coordinator (Vận hành/CSKH) | Teacher (Giảng viên) | Student (Học viên) | Parent (Phụ huynh) |
@@ -433,8 +492,9 @@ erDiagram
 | Tạo khóa học, phân công giáo viên | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Xếp lớp, cấu hình lịch học linh hoạt | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Dời lịch học / đổi phòng / đổi Meet link | ✅ | ✅ | ✅ (lớp phụ trách) | ⚠️ (đề xuất) | ❌ | ❌ |
+| Cấu hình thời gian gửi tin tự động | ✅ | ✅ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ |
 | Đánh giá chất lượng giáo viên (Audit) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Đánh giá giáo viên (Khảo sát cuối khóa) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Đánh giá giáo viên theo từng buổi | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Ghi chú chăm sóc học sinh vắng | ✅ | ✅ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ |
 | Check-in/out ca dạy (chấm công) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
 | Điểm danh học sinh lớp Hybrid | ✅ | ✅ | ✅ (hỗ trợ) | ✅ | ❌ | ❌ |
@@ -463,3 +523,71 @@ Thuật toán sinh và điều chỉnh buổi học:
      - **Phân công giáo viên dạy thay:** Cập nhật `assignedTeacherId` riêng cho buổi học khi giáo viên chính bận đột xuất.
      - **Bù buổi:** Thêm một buổi học mới ngoài lịch cố định.
    - Mọi thay đổi lịch học được bắn thông báo tức thời (Email/Push) đến Giảng viên, Học viên và Phụ huynh.
+
+---
+
+## 5. Kiến Trúc Động Cơ Tin Nhắn & Thông Báo Tự Động (Automated Notification Engine)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Cron as Cron Task / Scheduler
+    participant Engine as NotificationEngineService
+    participant DB as PostgreSQL (Prisma)
+    participant Gateway as Zalo ZNS / SMS Gateway
+    participant Recipient as Parent / Teacher / Coordinator
+
+    Note over Cron, Engine: Kịch bản 1: Cảnh báo điểm danh sau N phút (15 phút)
+    Cron->>Engine: Trigger checkAttendanceAlert()
+    Engine->>DB: Truy vấn ca học đang diễn ra (now - startTime >= alertMinutes)
+    DB-->>Engine: Danh sách buổi học & trạng thái điểm danh
+    alt Lớp có học sinh vắng mặt
+        Engine->>Gateway: Gửi Zalo/SMS tới Phụ huynh của từng học sinh vắng
+        Engine->>Gateway: Gửi tin nhắn tổng hợp vắng X/Y tới Giảng viên & Vận hành lớp
+    else Lớp đã đi đủ 100%
+        Engine->>Gateway: Gửi tin nhắn chúc mừng sĩ số đủ 100% tới Giảng viên & Vận hành
+    end
+    Engine->>DB: Đánh dấu class_sessions.attendanceAlertSentAt = now()
+
+    Note over Cron, Engine: Kịch bản 2: Nhắc nhở lịch học trước 24h & 2h
+    Cron->>Engine: Trigger scanUpcomingSessions()
+    Engine->>DB: Lấy ca học diễn ra trong 24h tới và 2h tới
+    DB-->>Engine: Danh sách ca học kèm preparationNotes & meetUrl
+    Engine->>Gateway: Bắn thông báo nhắc lịch học, dặn dò đồ dùng & Link phòng học trực tuyến
+
+    Note over Cron, Engine: Kịch bản 3: Tự động gửi nhận xét buổi học
+    participant Teacher as Giảng viên
+    Teacher->>Engine: Lưu sổ nhận xét buổi học (teacherNotes)
+    Engine->>Gateway: Bắn tin nhắn tóm tắt kết quả ca học tới Phụ huynh & Học sinh
+    Engine->>DB: Lưu nhật ký notification_logs (sentStatus = SENT)
+```
+
+---
+
+## 6. Cơ Chế Video Player Chống Tua & Heartbeat Anti-Cheat (Restricted Video Player)
+
+Nhằm bảo đảm học viên của các khóa học tự học (Self-Paced) xem trọn vẹn bài giảng video nhúng YouTube:
+
+1. **Client-Side Player Shield:**
+   - Trình phát sử dụng YouTube IFrame API bọc trong component bảo vệ React.
+   - Ẩn điều khiển tua mặc định của YouTube hoặc chặn sự kiện `seekTo`:
+     - Nếu vị trí người dùng tua tới $> \text{maxWatchedSeconds} + 2\text{s}$, player ngay lập tức ép `seekTo(maxWatchedSeconds)`.
+     - Cho phép tua lùi thoải mái ($\le \text{maxWatchedSeconds}$) để nghe lại bài giảng.
+2. **Anti-Cheat Heartbeat Protocol:**
+   - Mỗi $5$ giây khi video đang ở trạng thái `PLAYING`, client gửi heartbeat:
+     ```json
+     {
+       "lessonId": "uuid",
+       "currentSeconds": 145,
+       "playbackRate": 1.0,
+       "clientTimestamp": 1727072400
+     }
+     ```
+   - **Xác thực phía Server (Backend Verification):**
+     - $\Delta T_{\text{client}} = \text{currentSeconds} - \text{lastCurrentSeconds}$.
+     - $\Delta T_{\text{server}} = \text{now}() - \text{lastHeartbeatAt}$.
+     - Nếu $\Delta T_{\text{client}} > \Delta T_{\text{server}} \times \text{playbackRate} + 3\text{s}$ (phát hiện tua lách luật qua DevTools/Script) $\to$ Server từ chối cập nhật `maxWatchedSeconds` và trả mã cảnh báo `400 Bad Request`.
+3. **Mở khóa sau khi hoàn thành (Post-Completion Unlock):**
+   - Khi `maxWatchedSeconds >= totalDuration * 0.95`, hệ thống cập nhật `isCompleted = true` và `allowFreeSeeking = true`.
+   - Các lần xem tiếp theo, học sinh được tự do tua nhanh/chậm phục vụ việc tra cứu và ôn tập.
+
