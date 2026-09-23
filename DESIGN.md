@@ -197,6 +197,93 @@ Hệ thống sử dụng bố cục chuẩn **App Shell**:
   - Trình phát sóng âm thanh (Audio Waveform Visualizer) hiển thị biên độ giọng nói, nút Play/Pause và thanh tiến độ mượt mà.
   - Hỗ trợ học viên nghe lại với các tốc độ `1.0x`, `1.25x`, `1.5x`.
 
+### 5.9 Quy Chuẩn Các Trạng Thái Giao Diện (Error, Empty, Loading & Skeleton Standards)
+- **Loading State (Trạng thái đang tải):**
+  - *Thanh tiến trình toàn trang (Global Page Indicator):* Sử dụng `<NuxtLoadingIndicator color="#0284c7" :height="3" />` của Nuxt 4 gắn cố định tại mép trên cùng của trình duyệt, tự động kích hoạt khi chuyển route hoặc fetch dữ liệu ban đầu.
+  - *Nút bấm đang xử lý (Button Loading):* Khi bấm submit form, nút chuyển sang trạng thái disabled (`opacity-60 cursor-not-allowed`), ẩn icon thường và thay bằng icon Spinner quay vòng (`animate-spin`), hiển thị text hành động dạng tiếp diễn (ví dụ: `[ Đang lưu dữ liệu... ]`, `[ Đang chấm bài... ]`).
+- **Skeleton Loaders (Khung xương tải trước):**
+  - Tuyệt đối không sử dụng icon xoay tròn toàn màn hình (full-page spinner) gây chớp giật mắt và mất cảm giác công thái học.
+  - Sử dụng `<USkeleton>` của Nuxt UI v4 với hiệu ứng pulse mượt mà (`bg-slate-800 animate-pulse rounded`).
+  - Thiết kế Skeleton bám sát 100% bố cục thực của component:
+    - *Bảng dữ liệu (Data Table Skeleton):* 5 hàng placeholder với các ô chữ nhật chiều cao `h-5`, chiều rộng so le `w-1/4`, `w-1/3`, `w-1/6` và một ô nút tròn hành động ở cuối.
+    - *Thẻ khóa học (Course Card Skeleton):* Khung ảnh 16:9 bo tròn `h-48 w-full`, 2 thanh tiêu đề `h-5 w-3/4` và `h-4 w-1/2`, thanh giá tiền và thanh nút mua.
+    - *Cockpit Ca học:* Avatar tròn `h-10 w-10 rounded-full`, 2 dòng thông tin giảng viên và khung đếm thời gian.
+- **Empty States (Trạng thái rỗng / Không có dữ liệu):**
+  - Áp dụng khi danh sách học viên rỗng, chưa có lịch dạy hôm nay, hoặc kết quả tìm kiếm/lọc không có dữ liệu.
+  - Cấu trúc 4 tầng bắt buộc:
+    1. *Biểu tượng minh họa:* Icon nét vẽ đơn sắc kích thước lớn `w-16 h-16 text-slate-500` đặt trong vòng tròn nền mờ (`bg-slate-800/60 p-4 rounded-full`).
+    2. *Tiêu đề ngắn gọn:* `text-base font-semibold text-slate-200` (ví dụ: "Chưa có bài tập nào cần nộp" hoặc "Không tìm thấy học viên phù hợp").
+    3. *Mô tả chỉ dẫn:* `text-sm text-slate-400 max-w-sm text-center` giải thích lý do hoặc hướng dẫn người dùng bước tiếp theo.
+    4. *Nút hành động chính (Primary CTA):* Kêu gọi hành động trực tiếp (ví dụ: `[ + Thêm Học Viên Ngay ]`, `[ Đặt Lại Bộ Lọc ]`, `[ Tạo Bài Tập Mới ]`).
+- **Error Handling & Error States (Quy chuẩn xử lý lỗi):**
+  - *Lỗi Toàn Trang (App Crash / 404 / 500):* Bắt qua trang chuẩn `app/error.vue` của Nuxt 4; hiển thị mã lỗi HTTP to rõ, lời giải thích thân thiện bằng tiếng Việt và nút bấm `[ 🔄 Thử Lại ]` hoặc `[ 🏠 Trở Về Trang Chủ ]`.
+  - *Lỗi Tải Khối Component (Error Boundary):* Hiển thị Card cảnh báo nền đỏ nhạt (`bg-rose-950/40 border border-rose-600/40 text-rose-200 p-4 rounded-xl flex items-center justify-between`) kèm nút `[ Tải lại ]` cục bộ mà không bắt người dùng F5 toàn trang.
+  - *Thông báo nhanh (Toast Notifications):* Tích hợp `useToast()` của Nuxt UI v4 ở góc trên bên phải; màu xanh cho thành công (`success`), màu đỏ cho thất bại (`danger`), màu cam cho cảnh báo (`warning`); tự động biến mất sau 4 giây.
+  - *Lỗi Form Validation:* Bắt qua Zod Schema và hiển thị chữ đỏ nhỏ `text-xs text-rose-400 font-medium mt-1` ngay dưới từng ô input có lỗi.
+
+### 5.10 Dải Chữ Chạy Thông Báo (Marquee Announcement Banner)
+- **Vị trí:** Gắn cố định trên đầu trang (ngay trên Topbar) hoặc vị trí nổi bật tại Dashboard ca học khi có thông báo khẩn.
+- **Quy chuẩn kỹ thuật:**
+  - Sử dụng CSS animation chạy chữ mượt mà liên tục từ phải sang trái (infinite linear marquee) đảm bảo hiệu năng 60 FPS, không gây giật lag CPU.
+  - **Tự động dừng khi rê chuột (Pause on Hover):** Khi người dùng di chuyển con trỏ chuột vào dải chữ, chuyển động sẽ tạm dừng để người dùng đọc thông tin hoặc nhấp vào liên kết đính kèm.
+  - **Phân loại màu sắc nhận diện nghiệp vụ:**
+    - *Khẩn cấp (Sự cố mất điện, rớt mạng, đổi phòng học, GV muộn):* Nền đỏ đậm `bg-rose-950 border-b border-rose-600 text-rose-100 font-medium`.
+    - *Lịch đào tạo (Lịch thi, Khai giảng khóa mới, Hạn chót học phí):* Nền xanh dương `bg-sky-950 border-b border-sky-600 text-sky-100 font-medium`.
+    - *Bảo trì kỹ thuật (Bảo trì máy chủ, Nâng cấp hệ thống):* Nền hổ phách `bg-amber-950 border-b border-amber-600 text-amber-100 font-medium`.
+  - Nút đóng `[ ✕ ]` bên phải cho phép người dùng tắt thông báo; lưu trạng thái đã đóng vào `localStorage` theo `announcement_id` để không hiển thị lại gây phiền toái.
+
+### 5.11 Trình Soạn Thảo Văn Bản Giàu Định Dạng (Tiptap Rich Text Editor Component)
+- **Thư viện chuẩn:** Sử dụng **Tiptap Editor (`@tiptap/vue-3` & `@tiptap/starter-kit`)** chuẩn mực cho Nuxt 4 / Vue 3.
+- **Phạm vi ứng dụng:**
+  - Giáo viên soạn thảo đề bài tập, tài liệu hướng dẫn và giáo án buổi học.
+  - Quản nhiệm lớp soạn thảo báo cáo buổi học (`coordinatorNote`) gửi phụ huynh.
+  - Học viên & Trợ giảng trao đổi mã nguồn và giải thích trong Hộp thư Q&A.
+  - Quản trị viên viết bài thông báo trung tâm hoặc bài viết cẩm nang học tập.
+- **Thanh công cụ Toolbar công thái học (Floating / Sticky Menu):**
+  - *Nhóm Tiêu Đề:* Dropdown chọn Heading (Văn bản thường, Tiêu đề 1 `H1`, Tiêu đề 2 `H2`, Tiêu đề 3 `H3`).
+  - *Nhóm Định Dạng Ký Tự:* Nút In đậm (`Bold`), In nghiêng (`Italic`), Gạch chân (`Underline`), Gạch ngang (`Strike`), Khối mã inline (`` `code` ``), Đánh dấu tô sáng (`Highlight`).
+  - *Nhóm Danh Sách:* Danh sách đầu dòng tròn (Bullet list), Danh sách số thứ tự (Ordered list), Danh sách công việc có ô tích chọn (Task List với checkbox `[ ]`).
+  - *Nhóm Khối Nâng Cao:* Trích dẫn (`Blockquote`), Khối mã lập trình đa ngôn ngữ (`CodeBlock` với tô màu cú pháp syntax highlighting), Bảng dữ liệu (`Table` hỗ trợ thêm/xóa cột, hàng và gộp ô).
+  - *Nhóm Đính Kèm Phương Tiện (Media):* Nút chèn liên kết URL, Nút tải ảnh trực tiếp (tự động upload lên MinIO/S3 và chèn link Markdown/HTML), Nút nhúng video YouTube.
+- **Bảo mật:** Toàn bộ nội dung HTML do Tiptap sinh ra trước khi render hoặc lưu trữ đều bắt buộc chạy qua bộ lọc sạch mã độc `DOMPurify` để ngăn chặn triệt để lỗ hổng XSS (Cross-Site Scripting).
+
+### 5.12 Thanh Phân Trang Toàn Năng (Advanced 3-Section Pagination Bar Component)
+- **Mô tả:** Thành phần phân trang chuẩn hóa cho toàn bộ bảng biểu dữ liệu trong hệ thống (Quản lý học viên, Danh sách lớp học, Sổ điểm, Báo cáo tài chính, Hộp thư thắc mắc). Thiết kế mô phỏng chính xác 100% quy chuẩn giao diện điều hướng hiện đại.
+- **Bố cục khung chứa (Card Container):**
+  - Khung chữ nhật bo góc mềm mại `rounded-xl`, đường viền thanh lịch `border border-slate-700 bg-slate-900/60 dark:bg-slate-900/80 shadow-sm`.
+  - Căn chỉnh Flexbox 3 cụm dàn đều theo chiều ngang (`flex items-center justify-between px-4 py-2.5 text-sm`).
+- **Chi tiết 3 phân vùng chức năng:**
+  1. **Cụm Bên Trái - Nhập trang trực tiếp (Quick Jump Page Input):**
+     - Dòng chữ cố định: `Showing page`
+     - Ô nhập số trang: `[ 1 ]` (Input nhỏ gọn `w-12 h-8 text-center rounded-lg border border-slate-600 bg-slate-800 font-semibold text-slate-100 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors`).
+     - Người dùng có thể gõ trực tiếp bất kỳ số trang nào (ví dụ: gõ `8` và nhấn Enter) để nhảy ngay đến trang đó mà không cần bấm liên tiếp.
+     - Dòng chữ tổng số trang: `of {totalPages}` (ví dụ: `of 10`).
+  2. **Cụm Ở Giữa - Bộ nút điều hướng & Dải số trang (Navigation Controls & Number Pills):**
+     - Nút `[ << ]`: Nhảy về trang đầu tiên (`page = 1`), bị disable và làm mờ khi đang ở trang 1.
+     - Nút `[ < ]`: Lùi lại 1 trang (`page - 1`), bị disable khi đang ở trang 1.
+     - Dải số trang tương tác:
+       - *Trang đang chọn (Active Page):* Nút bấm nền xám bạc sáng `bg-slate-100 text-slate-900 dark:bg-slate-700 dark:text-sky-300 font-bold rounded-lg px-3 py-1 shadow-sm`.
+       - *Trang lân cận:* Chữ số click được `text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg px-3 py-1 transition-colors`.
+       - *Dấu chấm rút gọn `...`:* Tự động xuất hiện khi tổng số trang vượt quá 7 trang để giữ kích thước thanh phân trang gọn gàng.
+     - Nút `[ > ]`: Tiến lên 1 trang (`page + 1`), bị disable khi đang ở trang cuối cùng.
+     - Nút `[ >> ]`: Nhảy tới trang cuối cùng (`page = totalPages`), bị disable khi đang ở trang cuối cùng.
+  3. **Cụm Bên Phải - Chọn số lượng bản ghi mỗi trang (Rows Per Page Dropdown):**
+     - Dòng chữ cố định: `Rows per page`
+     - Menu thả xuống (Select Box): `[ 10 ⌄ ]` (Các tùy chọn: `10`, `20`, `50`, `100` dòng/trang).
+     - Khi người dùng thay đổi số dòng hiển thị, hệ thống tự động thiết lập lại `page = 1` và gọi API tải lại dữ liệu với `perPage` mới.
+- **Tương thích DTO Metadata Backend (`gmhafiz/go8`):**
+  - Thành phần nhận props phản ánh 100% cấu trúc `Envelope` phân trang từ Go API:
+    ```json
+    {
+      "meta": {
+        "page": 1,
+        "perPage": 10,
+        "total": 95,
+        "totalPages": 10
+      }
+    }
+    ```
+
 ---
 
 ## 6. Nguyên Tắc Trải Nghiệm (Do's & Don'ts)

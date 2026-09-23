@@ -13,3 +13,4 @@ Hồ sơ các quyết định kiến trúc quan trọng của hệ thống **LMS
 | [**ADR-0004**](0004-opentelemetry-observability.md) | Chuẩn hóa ngăn xếp giám sát OpenTelemetry (Jaeger, Prometheus, Loki, Grafana) | **Accepted** | 2026-09-22 |
 | [**ADR-0005**](0005-audit-fields-and-soft-delete-policy.md) | Quy chuẩn bắt buộc 6 Audit Fields và chính sách Soft Delete cho 100% bảng CSDL | **Accepted** | 2026-09-23 |
 | [**ADR-0006**](0006-nuxt-4-and-nuxt-ui-v4-frontend-foundation.md) | Nền tảng Frontend chuẩn hóa với Nuxt 4 và Nuxt UI v4 (Tailwind CSS v4 & Reka UI) | **Accepted** | 2026-09-23 |
+| [**ADR-0007**](0007-ui-states-tiptap-editor-and-pagination.md) | Chuẩn hóa trạng thái UI (Error, Empty, Skeleton, Loading, Marquee), Tiptap Editor và Phân trang | **Accepted** | 2026-09-23 |
