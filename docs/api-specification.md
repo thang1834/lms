@@ -2,7 +2,7 @@
 
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
 > **Tài liệu:** `docs/api-specification.md`  
-> **Phiên bản:** 2.4.0 (Chuẩn hóa Go 1.23+ / `gmhafiz/go8` Layered Architecture, Chi Router, Go Struct DTOs, bổ sung Teacher Live Cockpit, AI Review, Inbox & Substitute)  
+> **Phiên bản:** 2.5.0 (Bổ sung Phân hệ 21: Cổng Vận Hành Lớp, Chăm Sóc Học Viên & Chuyển Lớp CLASS_COORDINATOR)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
@@ -1973,7 +1973,203 @@ func (h *SubstituteHandler) AcceptSubstituteRequest(w http.ResponseWriter, r *ht
 }
 ```
 
-#### DTO Structs Bổ Sung (Teacher Live Cockpit, AI Review, Inbox & Substitute)
+---
+
+### Phân Hệ 21: Cổng Vận Hành Lớp, Chăm Sóc Học Viên & Chuyển Lớp (`internal/domain/coordinator`)
+
+#### 21.1 `GET /api/v1/coordinator/shifts/today` - Bảng điều hành ca học hôm nay & Giám sát Check-in
+
+```go
+package handler
+
+import (
+	"net/http"
+	"backend/internal/domain/coordinator/dto"
+	"backend/pkg/response"
+)
+
+// GetTodayShifts godoc
+// @Summary Lấy danh sách toàn bộ ca học diễn ra trong ngày kèm trạng thái Check-in GV
+// @Description Chuyên viên Vận hành lớp (Class Coordinator) giám sát các phòng học, đường link Meet, trạng thái giáo viên đã check-in hay có nguy cơ trễ
+// @Tags Coordinator Operations
+// @Produce json
+// @Security BearerAuth
+// @Param campusId query string false "Lọc theo chi nhánh cơ sở (UUID)" format(uuid)
+// @Success 200 {object} response.Envelope{data=dto.TodayShiftResponse} "Lấy danh sách ca học hôm nay thành công"
+// @Router /api/v1/coordinator/shifts/today [get]
+func (h *CoordinatorHandler) GetTodayShifts(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.GetTodayShifts
+}
+```
+
+#### 21.2 `POST /api/v1/coordinator/sessions/{id}/broadcast` - Phát loa thông báo khẩn cấp cả lớp
+
+```go
+// BroadcastToClass godoc
+// @Summary Phát thông báo khẩn cấp tới toàn bộ học sinh và giáo viên trong lớp
+// @Description Gửi thông báo tức thì qua Zalo ZNS / Push Notification / SMS khi đổi phòng học, link Google Meet hoặc dời giờ khẩn cấp
+// @Tags Coordinator Operations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Mã định danh buổi học (UUID)" format(uuid)
+// @Param request body dto.BroadcastClassRequest true "Nội dung thông báo khẩn và kênh gửi"
+// @Success 200 {object} response.Envelope{data=dto.BroadcastClassResponse} "Phát thông báo khẩn thành công"
+// @Router /api/v1/coordinator/sessions/{id}/broadcast [post]
+func (h *CoordinatorHandler) BroadcastToClass(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.BroadcastToClass
+}
+```
+
+#### 21.3 `POST /api/v1/coordinator/care-logs` - Ghi nhận nhật ký chăm sóc học sinh (Care CRM)
+
+```go
+// CreateCareLog godoc
+// @Summary Ghi lại nhật ký gọi điện / trao đổi chăm sóc học sinh
+// @Description Coordinator ghi nhận nội dung cuộc gọi với Học sinh/Phụ huynh, phân loại lý do nghỉ/đuối kiến thức, cam kết giải pháp và hẹn lịch follow-up
+// @Tags Coordinator Operations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.CreateCareLogRequest true "Thông tin cuộc gọi và giải pháp cam kết"
+// @Success 201 {object} response.Envelope{data=dto.CareLogResponse} "Lưu nhật ký chăm sóc thành công"
+// @Router /api/v1/coordinator/care-logs [post]
+func (h *CoordinatorHandler) CreateCareLog(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.CreateCareLog
+}
+```
+
+#### 21.4 `GET /api/v1/coordinator/students/{id}/care-history` - Xem toàn bộ lịch sử chăm sóc học viên
+
+```go
+// GetStudentCareHistory godoc
+// @Summary Xem toàn bộ lịch sử chăm sóc và tương tác của một học sinh
+// @Description Lấy danh sách toàn bộ các cuộc gọi, lý do vắng, ca học bù đã xếp và ghi chú của Coordinator đối với học sinh
+// @Tags Coordinator Operations
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Mã định danh học sinh (UUID)" format(uuid)
+// @Success 200 {object} response.Envelope{data=[]dto.CareLogResponse} "Lấy lịch sử chăm sóc thành công"
+// @Router /api/v1/coordinator/students/{id}/care-history [get]
+func (h *CoordinatorHandler) GetStudentCareHistory(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.GetStudentCareHistory
+}
+```
+
+#### 21.5 `POST /api/v1/coordinator/transfers` - Tiếp nhận đơn xin chuyển lớp hoặc bảo lưu
+
+```go
+// CreateClassTransferRequest godoc
+// @Summary Tạo đơn xin chuyển lớp học hoặc xin bảo lưu khóa học
+// @Description Coordinator tạo đề xuất chuyển lớp (sang ca khác) hoặc bảo lưu khóa học (tối đa 6 tháng) kèm số tiền học phí bảo lưu
+// @Tags Coordinator Operations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.CreateClassTransferRequest true "Thông tin lớp chuyển đến hoặc thời hạn bảo lưu"
+// @Success 201 {object} response.Envelope{data=dto.ClassTransferResponse} "Tạo đơn chuyển lớp/bảo lưu thành công"
+// @Router /api/v1/coordinator/transfers [post]
+func (h *CoordinatorHandler) CreateClassTransfer(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.CreateClassTransfer
+}
+```
+
+#### 21.6 `PUT /api/v1/coordinator/transfers/{id}/approve` - Phê duyệt chuyển lớp hoặc bảo lưu
+
+```go
+// ApproveClassTransfer godoc
+// @Summary Giáo vụ trưởng hoặc Admin phê duyệt đơn chuyển lớp / bảo lưu
+// @Description Xác nhận chấp thuận chuyển lớp, tự động cập nhật sĩ số 2 lớp hoặc chuyển trạng thái học viên sang DEFERRED
+// @Tags Coordinator Operations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Mã đơn chuyển lớp/bảo lưu (UUID)" format(uuid)
+// @Param request body dto.ApproveTransferRequest true "Quyết định phê duyệt (APPROVED/REJECTED)"
+// @Success 200 {object} response.Envelope{data=dto.ClassTransferResponse} "Xử lý đơn chuyển lớp thành công"
+// @Router /api/v1/coordinator/transfers/{id}/approve [put]
+func (h *CoordinatorHandler) ApproveClassTransfer(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.ApproveClassTransfer
+}
+```
+
+#### 21.7 `POST /api/v1/coordinator/sessions/{id}/incidents` - Báo cáo sự cố buổi học
+
+```go
+// ReportSessionIncident godoc
+// @Summary Báo cáo sự cố phòng học hoặc ca dạy
+// @Description Ghi nhận sự cố kỹ thuật (mất điện, rớt mạng, điều hòa hỏng, GV ốm) và giải pháp khắc phục tạm thời
+// @Tags Coordinator Operations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Mã định danh buổi học (UUID)" format(uuid)
+// @Param request body dto.ReportSessionIncidentRequest true "Chi tiết sự cố và phương án xử lý"
+// @Success 201 {object} response.Envelope{data=dto.SessionIncidentResponse} "Ghi nhận sự cố thành công"
+// @Router /api/v1/coordinator/sessions/{id}/incidents [post]
+func (h *CoordinatorHandler) ReportSessionIncident(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.ReportSessionIncident
+}
+```
+
+#### 21.8 `GET /api/v1/coordinator/classes/{id}/materials` - Danh sách cấp phát học liệu & đồng phục
+
+```go
+// ListClassMaterials godoc
+// @Summary Danh sách theo dõi cấp phát giáo trình, áo đồng phục của lớp học
+// @Description Hiển thị danh sách học viên trong lớp kèm trạng thái đã nhận giáo trình in, áo đồng phục (size) hay chưa
+// @Tags Coordinator Operations
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Mã định danh lớp học (UUID)" format(uuid)
+// @Success 200 {object} response.Envelope{data=[]dto.StudentMaterialItemDTO} "Lấy danh sách cấp phát thành công"
+// @Router /api/v1/coordinator/classes/{id}/materials [get]
+func (h *CoordinatorHandler) ListClassMaterials(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.ListClassMaterials
+}
+```
+
+#### 21.9 `PUT /api/v1/coordinator/materials/{id}/deliver` - Xác nhận bàn giao học liệu
+
+```go
+// DeliverStudentMaterial godoc
+// @Summary Xác nhận đã bàn giao học liệu / áo đồng phục cho học viên
+// @Description Coordinator tích chọn xác nhận đã bàn giao giáo trình hoặc đồng phục khi học viên nhận trực tiếp tại quầy
+// @Tags Coordinator Operations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Mã bản ghi cấp phát học liệu (UUID)" format(uuid)
+// @Param request body dto.DeliverMaterialRequest true "Thông tin người ký nhận"
+// @Success 200 {object} response.Envelope{data=dto.StudentMaterialItemDTO} "Xác nhận bàn giao thành công"
+// @Router /api/v1/coordinator/materials/{id}/deliver [put]
+func (h *CoordinatorHandler) DeliverStudentMaterial(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.DeliverStudentMaterial
+}
+```
+
+#### 21.10 `POST /api/v1/coordinator/sessions/{id}/digest` - Gửi báo cáo tóm tắt buổi học tới Phụ huynh
+
+```go
+// SendSessionDigest godoc
+// @Summary Soạn và gửi báo cáo tóm tắt buổi học tới Phụ huynh và Học sinh
+// @Description Gửi tin nhắn tổng hợp nội dung buổi học, học viên tích cực và bài tập cần làm qua Zalo ZNS / App Phụ huynh
+// @Tags Coordinator Operations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Mã định danh buổi học (UUID)" format(uuid)
+// @Param request body dto.SendSessionDigestRequest true "Nội dung tóm tắt buổi học và danh sách nhận tin"
+// @Success 200 {object} response.Envelope{data=dto.SessionDigestResponse} "Gửi báo cáo buổi học thành công"
+// @Router /api/v1/coordinator/sessions/{id}/digest [post]
+func (h *CoordinatorHandler) SendSessionDigest(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.SendSessionDigest
+}
+```
+
+---
+
+#### DTO Structs Bổ Sung (Teacher Live Cockpit, AI Review, Inbox, Substitute & Coordinator)
 
 ```go
 package dto
@@ -2091,6 +2287,139 @@ type SubstituteRequestResponse struct {
 	OriginalTeacherName string     `json:"originalTeacherName" example:"ThS. Nguyễn Văn Tuấn"`
 	SubstituteTeacherName *string  `json:"substituteTeacherName,omitempty"`
 	Status              string     `json:"status" example:"PENDING_OFFER"`
+}
+
+// Coordinator Operations DTOs
+type TodayShiftResponse struct {
+	Date          string                `json:"date" example:"2026-10-18"`
+	TotalSessions int                   `json:"totalSessions" example:"12"`
+	LateAlerts    int                   `json:"lateAlerts" example:"1"`
+	Sessions      []ShiftSessionItemDTO `json:"sessions"`
+}
+
+type ShiftSessionItemDTO struct {
+	SessionID       uuid.UUID  `json:"sessionId"`
+	ClassName       string     `json:"className" example:"FE-K32"`
+	SubjectName     string     `json:"subjectName" example:"Golang Backend Master"`
+	CampusName      string     `json:"campusName" example:"Cơ sở Cầu Giấy"`
+	RoomName        string     `json:"roomName" example:"LAB-201"`
+	TimeRange       string     `json:"timeRange" example:"19:30 - 21:30"`
+	TeacherName     string     `json:"teacherName" example:"Nguyễn Văn Tuấn"`
+	IsTeacherLate   bool       `json:"isTeacherLate" example:"false"`
+	IsCheckedIn     bool       `json:"isCheckedIn" example:"true"`
+	CheckedInAt     *time.Time `json:"checkedInAt,omitempty"`
+	PresentStudents int        `json:"presentStudents" example:"22"`
+	TotalStudents   int        `json:"totalStudents" example:"24"`
+	Status          string     `json:"status" example:"IN_PROGRESS"`
+}
+
+type BroadcastClassRequest struct {
+	Title    string   `json:"title" validate:"required" example:"Thông báo đổi phòng học tối nay"`
+	Message  string   `json:"message" validate:"required,min=10" example:"Lớp FE-K32 tối nay chuyển sang phòng LAB-302 do phòng LAB-201 bảo trì điều hòa."`
+	Channels []string `json:"channels" validate:"required" example:"[\"ZALO\", \"PUSH\"]"`
+}
+
+type BroadcastClassResponse struct {
+	BroadcastID uuid.UUID `json:"broadcastId"`
+	Recipients  int       `json:"recipients" example:"25"`
+	DeliveredAt time.Time `json:"deliveredAt"`
+}
+
+type CreateCareLogRequest struct {
+	StudentID      uuid.UUID  `json:"studentId" validate:"required"`
+	ClassID        uuid.UUID  `json:"classId" validate:"required"`
+	ContactType    string     `json:"contactType" validate:"required" example:"PHONE_CALL"`
+	ContactTarget  string     `json:"contactTarget" validate:"required" example:"PARENT"`
+	ReasonCategory string     `json:"reasonCategory" validate:"required" example:"DEMOTIVATED"`
+	NoteContent    string     `json:"noteContent" validate:"required,min=10" example:"Học sinh cảm thấy bài tập Concurrency khó, phụ huynh nhờ trung tâm kèm thêm"`
+	ActionTaken    string     `json:"actionTaken" validate:"required" example:"TA_TUTORING"`
+	NextFollowUpAt *time.Time `json:"nextFollowUpAt,omitempty"`
+}
+
+type CareLogResponse struct {
+	LogID           uuid.UUID  `json:"logId"`
+	StudentName     string     `json:"studentName" example:"Lê Hoàng Long"`
+	CoordinatorName string     `json:"coordinatorName" example:"Phạm Thị Quản Nhiệm"`
+	ContactType     string     `json:"contactType" example:"PHONE_CALL"`
+	ContactTarget   string     `json:"contactTarget" example:"PARENT"`
+	ReasonCategory  string     `json:"reasonCategory" example:"DEMOTIVATED"`
+	NoteContent     string     `json:"noteContent"`
+	ActionTaken     string     `json:"actionTaken" example:"TA_TUTORING"`
+	NextFollowUpAt  *time.Time `json:"nextFollowUpAt,omitempty"`
+	CreatedAt       time.Time  `json:"createdAt"`
+}
+
+type CreateClassTransferRequest struct {
+	StudentID    uuid.UUID  `json:"studentId" validate:"required"`
+	FromClassID  uuid.UUID  `json:"fromClassId" validate:"required"`
+	ToClassID    *uuid.UUID `json:"toClassId,omitempty"`
+	TransferType string     `json:"transferType" validate:"required" example:"DEFERRAL"`
+	Reason       string     `json:"reason" validate:"required,min=5" example:"Học sinh bận công tác đột xuất 2 tháng, xin bảo lưu sang khóa sau"`
+	DeferMonths  int        `json:"deferMonths" validate:"min=1,max=6" example:"3"`
+}
+
+type ClassTransferResponse struct {
+	TransferID     uuid.UUID  `json:"transferId"`
+	StudentID      uuid.UUID  `json:"studentId"`
+	StudentName    string     `json:"studentName" example:"Lê Hoàng Long"`
+	FromClassName  string     `json:"fromClassName" example:"FE-K32"`
+	ToClassName    *string    `json:"toClassName,omitempty"`
+	TransferType   string     `json:"transferType" example:"DEFERRAL"`
+	ReservedCredit float64    `json:"reservedCredit" example:"3500000.0"`
+	DeferUntilDate *time.Time `json:"deferUntilDate,omitempty"`
+	Status         string     `json:"status" example:"PENDING"`
+	CreatedAt      time.Time  `json:"createdAt"`
+}
+
+type ApproveTransferRequest struct {
+	IsApproved bool    `json:"isApproved"`
+	Note       *string `json:"note,omitempty" example:"Đồng ý bảo lưu 3 tháng, bảo lưu số tiền 3.500.000 VNĐ"`
+}
+
+type ReportSessionIncidentRequest struct {
+	IncidentType string `json:"incidentType" validate:"required" example:"PROJECTOR_BROKEN"`
+	Severity     string `json:"severity" validate:"required" example:"MEDIUM"`
+	Description  string `json:"description" validate:"required,min=10" example:"Máy chiếu phòng 201 chập bóng đèn không lên hình"`
+	Resolution   string `json:"resolution" validate:"required" example:"Đã mượn máy chiếu di động từ phòng hành chính thay thế"`
+}
+
+type SessionIncidentResponse struct {
+	IncidentID      uuid.UUID `json:"incidentId"`
+	SessionID       uuid.UUID `json:"sessionId"`
+	IncidentType    string    `json:"incidentType" example:"PROJECTOR_BROKEN"`
+	Severity        string    `json:"severity" example:"MEDIUM"`
+	Description     string    `json:"description"`
+	Resolution      *string   `json:"resolution,omitempty"`
+	CoordinatorName string    `json:"coordinatorName" example:"Phạm Thị Quản Nhiệm"`
+	CreatedAt       time.Time `json:"createdAt"`
+}
+
+type StudentMaterialItemDTO struct {
+	MaterialID   uuid.UUID  `json:"materialId"`
+	StudentID    uuid.UUID  `json:"studentId"`
+	StudentName  string     `json:"studentName" example:"Nguyễn Hoàng Nam"`
+	ItemName     string     `json:"itemName" example:"Áo đồng phục LMS"`
+	ItemType     string     `json:"itemType" example:"UNIFORM"`
+	SizeOption   *string    `json:"sizeOption,omitempty" example:"L"`
+	IsDelivered  bool       `json:"isDelivered" example:"true"`
+	DeliveredAt  *time.Time `json:"deliveredAt,omitempty"`
+	ReceiverName *string    `json:"receiverName,omitempty" example:"Nguyễn Hoàng Nam"`
+}
+
+type DeliverMaterialRequest struct {
+	ReceiverName string `json:"receiverName" validate:"required" example:"Nguyễn Hoàng Nam"`
+}
+
+type SendSessionDigestRequest struct {
+	Highlights   string   `json:"highlights" validate:"required" example:"Buổi 4 lớp học tốt, 100% học sinh hoàn thành bài thực hành goroutine cơ bản."`
+	HomeworkDue  string   `json:"homeworkDue" example:"Hạn nộp BTVN bài 4: 23:59 Chủ Nhật"`
+	SendChannels []string `json:"sendChannels" validate:"required" example:"[\"APP_NOTIFICATION\", \"ZALO\"]"`
+}
+
+type SessionDigestResponse struct {
+	SessionID uuid.UUID `json:"sessionId"`
+	SentCount int       `json:"sentCount" example:"24"`
+	SentAt    time.Time `json:"sentAt"`
 }
 ```
 

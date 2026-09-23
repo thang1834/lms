@@ -4,7 +4,7 @@
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
 > **Kiến trúc:** Monorepo (Frontend: Nuxt UI + Vue 3 | Backend: `gmhafiz/go8` + Go-chi + PostgreSQL)  
 > **Chế độ:** PLANNING ONLY (No code writing in this phase)  
-> **Phiên bản:** 2.2.0 (Bổ sung Live Class Cockpit, AI Code Review, Voice Note, Hộp Thư Q&A, Chợ Dạy Thay & Sổ Tay Sư Phạm)  
+> **Phiên bản:** 2.3.0 (Bổ sung Live Shift Board, Student Care CRM, Chuyển Lớp & Bảo Lưu, Sự Cố Phòng Học & Cấp Phát Học Liệu)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
@@ -14,7 +14,7 @@
 Hệ thống LMS được thiết kế riêng cho trung tâm đào tạo hiện đại với trọng tâm là **Công nghệ thông tin (CNTT)**, đồng thời linh hoạt mở rộng hoàn hảo cho **Ngoại ngữ** và các bộ môn khác. Backend được xây dựng theo blueprint **`gmhafiz/go8`** (Go-chi, Layered Architecture, Goose migrations, Taskfile) kết hợp Frontend **Nuxt UI** cho 4 cổng người dùng.
 
 
-Hệ thống tích hợp toàn diện 18 trụ cột nghiệp vụ:
+Hệ thống tích hợp toàn diện 19 trụ cột nghiệp vụ:
 1. **Chuẩn Hóa Phân Quyền Hạt Nhân RBAC (Dynamic RBAC Architecture)**:
    - Các bảng `roles`, `permissions`, `role_permissions`, `user_roles`.
    - Phân cấp 8 vai trò: Super Admin, Academic Manager (Giáo vụ trưởng), Class Coordinator (Vận hành lớp & Chăm sóc học viên), Giảng viên chính, Trợ giảng (Optional), Giám khảo / Hội đồng phản biện (Examiner), Học viên và Phụ huynh.
@@ -74,6 +74,12 @@ Hệ thống tích hợp toàn diện 18 trụ cột nghiệp vụ:
     - Chợ dạy thay: Đăng yêu cầu dạy thay, hệ thống tự khớp nối với GV cùng chuyên môn có lịch rảnh, tự động điều chuyển thù lao ca dạy.
     - Sổ tay ghi chú sư phạm cá nhân (`student_pedagogical_notes`): Ghi chú bảo mật về tính cách, điểm mạnh/yếu học sinh (chỉ GV và TA đọc được).
     - Ngân hàng đề bài mẫu cá nhân (`assignment_banks`) kèm nút nhân bản 1-click sang các lớp học mới.
+19. **Chuyên Viên Vận Hành Lớp & Chăm Sóc Học Viên Toàn Diện (Class Coordinator Operations & Student Retention CRM)**:
+    - Bảng điều hành ca học hôm nay (`/coordinator/today`), Check-in Watchdog cảnh báo đỏ GV/TA trễ sau 10p, 1-Click Class Broadcast phát thông báo khẩn qua Zalo/Push/SMS.
+    - Sổ nhật ký chăm sóc học viên (`student_care_logs`), tích hợp Churn Radar can thiệp học sinh vắng 2 buổi liên tiếp hoặc nợ bài tập.
+    - Quy trình chuyển lớp & bảo lưu khóa học (`class_transfers`): tự động tính học phí bảo lưu (`reservedCredit`), giải phóng chỗ và phê duyệt 2 cấp.
+    - Quản lý sự cố vận hành tức thời (`session_incidents`): ghi nhận sự cố điện nước/phòng học/GV ốm, tự động cấp link Meet chuyển học online.
+    - Sổ liên lạc điện tử & cấp phát học liệu (`student_materials`): cấp phát giáo trình, áo đồng phục, welcome kit và xác nhận bàn giao.
 
 ---
 
@@ -489,6 +495,59 @@ type SubstituteRequest struct {
 	CompensationRate    float64    `json:"compensationRate" db:"compensation_rate"`
 	Status              string     `json:"status" db:"status"` // OPEN, ACCEPTED, REJECTED, CANCELLED
 	ResolvedAt          *time.Time `json:"resolvedAt,omitempty" db:"resolved_at"`
+	AuditFields
+}
+
+// 19. Vận hành lớp, Chăm sóc học viên & Xử lý sự cố (Class Coordinator)
+type StudentCareLog struct {
+	ID             uuid.UUID  `json:"id" db:"id"`
+	StudentID      uuid.UUID  `json:"studentId" db:"student_id"`
+	ClassID        uuid.UUID  `json:"classId" db:"class_id"`
+	CoordinatorID  uuid.UUID  `json:"coordinatorId" db:"coordinator_id"`
+	ContactType    string     `json:"contactType" db:"contact_type"` // PHONE_CALL, ZALO, IN_PERSON
+	ContactTarget  string     `json:"contactTarget" db:"contact_target"` // STUDENT, PARENT
+	ReasonCategory string     `json:"reasonCategory" db:"reason_category"` // SICK, EXAM, DEMOTIVATED, HARD_TOPIC, FINANCIAL
+	NoteContent    string     `json:"noteContent" db:"note_content"`
+	ActionTaken    string     `json:"actionTaken" db:"action_taken"` // SCHEDULED_MAKEUP, TA_TUTORING, EXTENDED_DEADLINE, ENCOURAGED
+	NextFollowUpAt *time.Time `json:"nextFollowUpAt,omitempty" db:"next_follow_up_at"`
+	AuditFields
+}
+
+type ClassTransfer struct {
+	ID             uuid.UUID  `json:"id" db:"id"`
+	StudentID      uuid.UUID  `json:"studentId" db:"student_id"`
+	FromClassID    uuid.UUID  `json:"fromClassId" db:"from_class_id"`
+	ToClassID      *uuid.UUID `json:"toClassId,omitempty" db:"to_class_id"`
+	TransferType   string     `json:"transferType" db:"transfer_type"` // CLASS_TRANSFER, DEFERRAL
+	Reason         string     `json:"reason" db:"reason"`
+	ReservedCredit float64    `json:"reservedCredit" db:"reserved_credit"`
+	DeferUntilDate *time.Time `json:"deferUntilDate,omitempty" db:"defer_until_date"`
+	Status         string     `json:"status" db:"status"` // PENDING, APPROVED, REJECTED
+	ApprovedByID   *uuid.UUID `json:"approvedById,omitempty" db:"approved_by_id"`
+	AuditFields
+}
+
+type SessionIncident struct {
+	ID            uuid.UUID `json:"id" db:"id"`
+	SessionID     uuid.UUID `json:"sessionId" db:"session_id"`
+	CoordinatorID uuid.UUID `json:"coordinatorId" db:"coordinator_id"`
+	IncidentType  string    `json:"incidentType" db:"incident_type"` // TEACHER_LATE, NETWORK_DOWN, PROJECTOR_BROKEN, FACILITY_ISSUE, STUDENT_CONFLICT
+	Severity      string    `json:"severity" db:"severity"` // LOW, MEDIUM, CRITICAL
+	Description   string    `json:"description" db:"description"`
+	Resolution    *string   `json:"resolution,omitempty" db:"resolution"`
+	AuditFields
+}
+
+type StudentMaterial struct {
+	ID           uuid.UUID  `json:"id" db:"id"`
+	StudentID    uuid.UUID  `json:"studentId" db:"student_id"`
+	ClassID      uuid.UUID  `json:"classId" db:"class_id"`
+	ItemName     string     `json:"itemName" db:"item_name"`
+	ItemType     string     `json:"itemType" db:"item_type"` // TEXTBOOK, UNIFORM, WELCOME_KIT, HARDWARE_KIT
+	SizeOption   *string    `json:"sizeOption,omitempty" db:"size_option"` // S, M, L, XL, XXL
+	IsDelivered  bool       `json:"isDelivered" db:"is_delivered"`
+	DeliveredAt  *time.Time `json:"deliveredAt,omitempty" db:"delivered_at"`
+	ReceiverName *string    `json:"receiverName,omitempty" db:"receiver_name"`
 	AuditFields
 }
 ```

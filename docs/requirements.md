@@ -2,7 +2,7 @@
 
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
 > **Tài liệu:** `docs/requirements.md`  
-> **Phiên bản:** 1.2.0 (Cập nhật Phân cấp Quản lý, Vận Hành Lớp, Lịch Học Linh Hoạt & Đánh Giá Moodle)  
+> **Phiên bản:** 1.8.0 (Bổ sung Phân hệ 28-31: Cổng Chuyên Viên Vận Hành Lớp & Chăm Sóc Học Viên CLASS_COORDINATOR)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
@@ -573,6 +573,67 @@ Nâng cao chất lượng đào tạo và tái sử dụng giáo án sư phạm:
 
 ---
 
+### Phân hệ 28: Trung Tâm Vận Hành Ca Học Hôm Nay & Cảnh Báo Khẩn Cấp (Today's Live Shift Board & Incident Broadcast)
+
+Chuyên viên Vận hành lớp (`CLASS_COORDINATOR`) kiểm soát toàn diện các ca học đang diễn ra trong ngày trên một bảng điều khiển tập trung:
+
+- **FR-COORD-SHIFT-01 (Bảng Điều Phối Ca Học Trong Ngày - Shift Command Center):**
+  - Màn hình `/coordinator/today` hiển thị toàn bộ ca dạy chia theo cơ sở chi nhánh và khung giờ (Sáng / Chiều / Tối).
+  - Trạng thái trực quan: *Sắp diễn ra*, *Đang học*, *Chưa Check-in (Nguy cơ trễ)*, *Đã kết thúc*.
+  - Hiển thị nhanh sĩ số thời gian thực: Đã có mặt / Vắng mặt / Đi muộn / Có phép.
+- **FR-COORD-SHIFT-02 (Giám Sát Check-in & Cảnh Báo Trễ - Check-in Watchdog):**
+  - Đồng hồ đếm ngược trước giờ học 15 phút.
+  - Nếu trước giờ học 10 phút mà Giảng viên/Trợ giảng chưa check-in $\to$ tự động hiển thị cảnh báo đỏ rung chuông, kích hoạt SMS/Zalo nhắc nhở kèm nút **"Gọi nhanh GV"** và **"Phát đề xuất dạy thay khẩn cấp"**.
+- **FR-COORD-SHIFT-03 (Phát Loa Thông Báo Khẩn Cấp Lớp Học - 1-Click Class Broadcast):**
+  - Khi phát sinh sự cố đột xuất (hỏng máy chiếu, đổi sang phòng học khác, đổi đường link Google Meet) $\to$ Coordinator bấm phát thông báo, hệ thống lập tức gửi Zalo ZNS / Push Notification tới toàn bộ học sinh và giảng viên trong vòng 3 giây.
+
+---
+
+### Phân hệ 29: Hồ Sơ Chăm Sóc Học Viên & Can Thiệp Nguy Cơ Thôi Học (Student Retention & Care CRM)
+
+Chặn đứng tình trạng học viên chán nản, đuối kiến thức hoặc bỏ học giữa chừng:
+
+- **FR-COORD-CARE-01 (Hàng Đợi Can Thiệp Churn - Churn Intervention Queue):**
+  - Tích hợp trực tiếp với thuật toán **Student Churn Radar**: Tự động đưa học sinh vắng 2 buổi liên tiếp hoặc thiếu 3 bài tập về nhà vào hàng đợi chăm sóc ưu tiên (Cờ đỏ `CRITICAL`).
+- **FR-COORD-CARE-02 (Sổ Nhật Ký Chăm Sóc Học Viên - Student Care Logs):**
+  - Cho phép Coordinator bấm nút **"Gọi điện chăm sóc"** và ghi nhận lịch sử tương tác:
+    - Đối tượng liên hệ: Học sinh hay Phụ huynh.
+    - Phân loại nguyên nhân: *Ốm đau / Bận thi cử ở trường / Kiến thức quá nhanh / Đổi ca làm thêm*.
+    - Giải pháp cam kết: *Đã xếp lịch học bù / Gia hạn deadline nộp code / Phân công TA kèm 30 phút trước buổi sau*.
+    - Đặt lịch hẹn nhắc gọi lại sau $N$ ngày (`next_follow_up_at`).
+
+---
+
+### Phân hệ 30: Quản Lý Chuyển Lớp, Bảo Lưu & Sự Cố Lớp Học (Transfers, Deferrals & Incidents)
+
+Xử lý các tình huống thay đổi lộ trình học tập và ghi nhận sự cố vận hành:
+
+- **FR-COORD-TRANS-01 (Quy Trình Chuyển Lớp & Bảo Lưu Khóa Học - Transfers & Deferrals):**
+  - Tiếp nhận và xử lý đơn xin chuyển lớp (sang ca học khác, giảng viên khác) hoặc xin bảo lưu khóa học (tối đa 6 tháng).
+  - Tự động tính toán số buổi đã học, số tiền học phí còn bảo lưu (`reserved_credit`) và lập biên bản bảo lưu điện tử gửi học viên/phụ huynh.
+  - Phê duyệt 2 cấp: Coordinator đề xuất $\to$ Academic Manager duyệt.
+- **FR-COORD-INCIDENT-01 (Nhật Ký Sự Cố Vận Hành - Session Incident Reports):**
+  - Ghi nhận sự cố cơ sở vật chất (mất điện, rớt mạng LAN, hỏng điều hòa, giáo viên ốm giữa buổi).
+  - Lưu trữ giải pháp xử lý tức thời và đánh giá mức độ nghiêm trọng để báo cáo cho Ban Giám đốc và bộ phận Kỹ thuật.
+
+---
+
+### Phân hệ 31: Sổ Liên Lạc Điện Tử & Quản Lý Cấp Phát Học Liệu (Parent Digest & Materials Tracker)
+
+Cầu nối minh bạch với phụ huynh và đảm bảo học viên nhận đầy đủ học liệu:
+
+- **FR-COORD-DIGEST-01 (Trình Soạn Báo Cáo Buổi Học Gửi Phụ Huynh - Session Digest Builder):**
+  - Bộ mẫu có sẵn (`coordinatorNote` templates): Tóm tắt nội dung bài học, tuyên dương học viên xuất sắc, nhắc lịch nộp bài tập.
+  - 1-Click bắn tin tóm tắt qua App Phụ huynh hoặc Zalo ZNS sau khi buổi học kết thúc.
+- **FR-COORD-DIGEST-02 (Báo Cáo Tiến Độ Định Kỳ & Nhắc Học Phí - Progress & Tuition Reminder):**
+  - Tự động sinh báo cáo tổng hợp tuần/tháng: Tỷ lệ chuyên cần %, điểm trung bình BTVN, điểm thi Quiz.
+  - Danh sách học sinh đóng học phí nhiều đợt/trả góp sắp tới hạn: Coordinator gửi tin nhắn nhắc nợ nhẹ nhàng có đính kèm **Mã VietQR động Napas247** để phụ huynh thanh toán nhanh chóng.
+- **FR-COORD-MAT-01 (Quản Lý Cấp Phát Giáo Trình & Đồng Phục - Student Materials Tracker):**
+  - Quản lý danh sách học viên đã nhận: Áo đồng phục (size S/M/L/XL), Sổ tay, Balo, Giáo trình bản in (Welcome Kit).
+  - Tránh tình trạng bỏ sót học viên không nhận được tài liệu học tập trong tuần đầu khai giảng.
+
+---
+
 ## 4. Bổ Sung Ma Trận User Stories (Acceptance Criteria)
 
 | Mã Story | Đối tượng | Hành động (User Story) | Tiêu chí chấp nhận (Acceptance Criteria) |
@@ -617,6 +678,11 @@ Nâng cao chất lượng đào tạo và tái sử dụng giáo án sư phạm:
 | **US-TEACH-SUB-01** | Giảng viên | Nhờ đồng nghiệp dạy thay khi bận đột xuất | - Đăng ký nhờ dạy thay $\to$ hệ thống đề xuất đồng nghiệp rảnh ca nhận dạy $\to$ tự động tính thù lao vào bảng lương người dạy thay. |
 | **US-TEACH-NOTE-01** | Giảng viên | Ghi chú sư phạm nội bộ về học sinh | - Lưu nhận xét riêng tư về năng lực/thói quen học sinh, chia sẻ bảo mật với Trợ giảng để kèm cặp riêng. |
 | **US-TEACH-BANK-01** | Giảng viên | Tái sử dụng bài tập từ ngân hàng bài tập mẫu | - 1-click nhân bản bài tập, test case và starter code từ khóa trước sang lớp học mới. |
+| **US-COORD-SHIFT-01** | Chuyên viên Vận hành | Giám sát ca học hôm nay và nhận cảnh báo GV trễ | - Bảng `/coordinator/today` hiển thị toàn bộ phòng học; Nếu trước 10p GV chưa check-in $\to$ rung chuông cảnh báo đỏ, hỗ trợ phát ca dạy thay khẩn. |
+| **US-COORD-CARE-01** | Chuyên viên Vận hành | Ghi nhật ký chăm sóc học viên có nguy cơ thôi học | - Nhận danh sách Churn Radar vắng 2 buổi; Gọi điện tìm hiểu nguyên nhân, xếp lịch học bù/kèm 1-1 và đặt lịch follow-up sau 3 ngày. |
+| **US-COORD-TRANSFER-01** | Chuyên viên Vận hành | Xử lý đơn chuyển lớp hoặc bảo lưu khóa học | - Tiếp nhận yêu cầu chuyển lớp hoặc bảo lưu $\to$ hệ thống tự tính học phí còn lại $\to$ gửi Giáo vụ trưởng duyệt $\to$ cập nhật danh sách lớp. |
+| **US-COORD-INCIDENT-01** | Chuyên viên Vận hành | Ghi nhận sự cố buổi học và phát thông báo khẩn | - Nhập sự cố (mất điện, rớt mạng, GV ốm) $\to$ 1-click bắn tin Zalo/Push đổi phòng hoặc đổi link Meet cho học sinh trong 3 giây. |
+| **US-COORD-MATERIAL-01** | Chuyên viên Vận hành | Theo dõi cấp phát giáo trình, áo đồng phục lớp | - Danh sách học viên lớp kèm trạng thái bàn giao: Áo đồng phục (size), Giáo trình in $\to$ tích chọn đã giao khi học viên nhận. |
 
 
 

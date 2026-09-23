@@ -2,7 +2,7 @@
 
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
 > **Tài liệu:** `docs/architecture.md`  
-> **Phiên bản:** 2.3.0 (Kiến trúc Go Backend chuẩn hóa theo blueprint `gmhafiz/go8` + Frontend Nuxt UI, bổ sung Teacher Live Cockpit, AI Review, Whiteboards & Substitute Marketplace)  
+> **Phiên bản:** 2.4.0 (Bổ sung Cổng Vận Hành Lớp & Chăm Sóc Học Viên CLASS_COORDINATOR, 4 Bảng CSDL mới 56-59, 2 Goose Migrations 18 & 19)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
@@ -272,6 +272,20 @@ erDiagram
     TeacherProfile ||--o{ SubstituteRequest : substitute_teacher
     TeacherProfile ||--o{ AssignmentBank : owns_bank
     Subject ||--o{ AssignmentBank : categorizes_asg_bank
+
+    StudentProfile ||--o{ StudentCareLog : cared_student
+    Class ||--o{ StudentCareLog : student_class
+    User ||--o{ StudentCareLog : coordinator_actor
+
+    StudentProfile ||--o{ ClassTransfer : transfer_student
+    Class ||--o{ ClassTransfer : from_class
+    Class ||--o{ ClassTransfer : to_class
+
+    ClassSession ||--o{ SessionIncident : reports_incident
+    User ||--o{ SessionIncident : coordinator_reporter
+
+    StudentProfile ||--o{ StudentMaterial : receives_material
+    Class ||--o{ StudentMaterial : class_material
 ```
 
 
@@ -1027,6 +1041,62 @@ erDiagram
 
 ---
 
+#### Nhóm 19: Chăm Sóc Học Viên, Can Thiệp Churn & Chuyển Lớp (Student Care CRM & Class Transfers)
+
+56. **`student_care_logs`** (Nhật ký tương tác, gọi điện chăm sóc học viên của Coordinator):
+    - `id` (UUID, PK).
+    - `studentId` (UUID, FK -> `student_profiles.id`): Học sinh được chăm sóc.
+    - `classId` (UUID, FK -> `classes.id`): Thuộc lớp học tương ứng.
+    - `coordinatorId` (UUID, FK -> `users.id`): Chuyên viên vận hành phụ trách.
+    - `contactType` (Enum: `PHONE_CALL`, `ZALO`, `IN_PERSON`, `EMAIL`).
+    - `contactTarget` (Enum: `STUDENT`, `PARENT`).
+    - `reasonCategory` (Enum: `SICK`, `EXAM`, `DEMOTIVATED`, `HARD_TOPIC`, `SCHEDULE_CONFLICT`, `OTHER`).
+    - `noteContent` (Text): Chi tiết phản ánh và trao đổi.
+    - `actionTaken` (Enum: `SCHEDULED_MAKEUP`, `EXTENDED_DEADLINE`, `TA_TUTORING`, `COUNSELED`, `TRANSFERRED`).
+    - `nextFollowUpAt` (Timestamp, Nullable): Lịch hẹn gọi điện kiểm tra lại.
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+57. **`class_transfers`** (Đơn xin chuyển lớp & Bảo lưu khóa học):
+    - `id` (UUID, PK).
+    - `studentId` (UUID, FK -> `student_profiles.id`): Học sinh chuyển lớp hoặc bảo lưu.
+    - `fromClassId` (UUID, FK -> `classes.id`): Lớp học ban đầu.
+    - `toClassId` (UUID, Nullable, FK -> `classes.id`): Lớp học chuyển đến (NULL nếu là bảo lưu).
+    - `transferType` (Enum: `CLASS_TRANSFER`, `DEFERRAL`).
+    - `reason` (Text): Lý do chuyển lớp / bảo lưu.
+    - `reservedCredit` (Decimal, Default `0`): Số học phí còn bảo lưu chuyển sang khóa sau.
+    - `deferUntilDate` (Date, Nullable): Hạn chót bảo lưu (tối đa 6 tháng).
+    - `status` (Enum: `PENDING`, `APPROVED`, `REJECTED`, `COMPLETED`).
+    - `approvedById` (UUID, Nullable, FK -> `users.id`): Giáo vụ trưởng hoặc Admin phê duyệt.
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+---
+
+#### Nhóm 20: Quản Lý Sự Cố Vận Hành & Cấp Phát Học Liệu (Session Incidents & Student Materials)
+
+58. **`session_incidents`** (Báo cáo sự cố phòng học & ca dạy):
+    - `id` (UUID, PK).
+    - `sessionId` (UUID, FK -> `class_sessions.id`): Ca học phát sinh sự cố.
+    - `coordinatorId` (UUID, FK -> `users.id`): Chuyên viên vận hành ghi nhận.
+    - `incidentType` (Enum: `TEACHER_LATE`, `NETWORK_DOWN`, `PROJECTOR_BROKEN`, `POWER_OUTAGE`, `WEATHER_ISSUE`).
+    - `severity` (Enum: `LOW`, `MEDIUM`, `CRITICAL`).
+    - `description` (Text): Mô tả tình huống sự cố.
+    - `resolution` (Text, Nullable): Phương án khắc phục (Đổi phòng, chuyển Meet online, nhờ dạy thay).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+59. **`student_materials`** (Theo dõi cấp phát giáo trình, áo đồng phục & Welcome Kit):
+    - `id` (UUID, PK).
+    - `studentId` (UUID, FK -> `student_profiles.id`): Học sinh nhận học liệu.
+    - `classId` (UUID, FK -> `classes.id`): Lớp học tiếp nhận.
+    - `itemName` (String): Tên vật phẩm (ví dụ: "Giáo trình Lập Trình Go", "Áo đồng phục LMS", "Balo").
+    - `itemType` (Enum: `TEXTBOOK`, `UNIFORM`, `WELCOME_KIT`, `STUDENT_CARD`).
+    - `sizeOption` (String, Nullable): Kích cỡ (S, M, L, XL đối với áo).
+    - `isDelivered` (Boolean, Default `false`): Đã bàn giao cho học sinh.
+    - `deliveredAt` (Timestamp, Nullable): Thời điểm bàn giao.
+    - `receiverName` (String, Nullable): Người ký nhận bàn giao.
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+---
+
 ## 3. Ma Trận Phân Quyền Hạt Nhân RBAC (Granular RBAC Matrix)
 
 | Chức năng / Permission Code | Super Admin | Academic Manager (Giáo vụ) | Class Coordinator (Vận hành/CSKH) | Teacher (Giảng viên) | Examiner (Giám khảo) | Student (Học viên) | Parent (Phụ huynh) |
@@ -1049,6 +1119,14 @@ erDiagram
 | Đánh giá chất lượng giáo viên (Audit định kỳ) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Đánh giá giáo viên theo từng buổi học | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Ghi chú chăm sóc học sinh vắng (`coordinatorNote`) | ✅ | ✅ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ | ❌ |
+| Bảng điều phối ca học hôm nay (`/coordinator/today`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Phát loa thông báo khẩn cấp cả lớp (1-Click Broadcast) | ✅ | ✅ | ✅ (lớp phụ trách) | ⚠️ (đề xuất) | ❌ | ❌ | ❌ |
+| Sổ nhật ký chăm sóc học viên & CSKH (`student_care_logs`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Tạo yêu cầu chuyển lớp / bảo lưu khóa học | ✅ | ✅ | ✅ | ❌ | ❌ | ⚠️ (học viên nộp đơn) | ❌ |
+| Phê duyệt đơn chuyển lớp / bảo lưu khóa học | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Ghi nhận & xử lý sự cố buổi học (`session_incidents`) | ✅ | ✅ | ✅ | ⚠️ (báo cáo) | ❌ | ❌ | ❌ |
+| Quản lý cấp phát giáo trình, đồng phục (`student_materials`) | ✅ | ✅ | ✅ | ❌ | ❌ | 👁️ (xem) | ❌ |
+| Soạn & gửi báo cáo buổi học tới Phụ huynh | ✅ | ✅ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ | ❌ |
 | Giám sát Radar nguy cơ bỏ học (Churn Radar) & KPIs | ✅ | ✅ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ | ❌ |
 | Check-in/out ca dạy (chấm công giáo viên) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Bảng điều khiển ca dạy tập trung (Live Class Cockpit) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
@@ -1213,7 +1291,9 @@ LMS/
 │   │       ├── 20260923000014_create_contracts.sql
 │   │       ├── 20260923000015_create_teacher_cockpit_whiteboards.sql
 │   │       ├── 20260923000016_create_ai_code_reviews_pedagogy.sql
-│   │       └── 20260923000017_create_substitute_assignment_bank.sql
+│   │       ├── 20260923000017_create_substitute_assignment_bank.sql
+│   │       ├── 20260923000018_create_coordinator_care_transfers.sql
+│   │       └── 20260923000019_create_coordinator_incidents_materials.sql
 │   ├── internal/
 │   │   ├── server/                            # Khởi tạo Server & Dependency Injection
 │   │   │   ├── server.go                      # Server struct & lifecycle
@@ -1231,6 +1311,7 @@ LMS/
 │   │   │   ├── subject/                       # Danh mục môn học động (CRUD)
 │   │   │   ├── campus/                        # Quản lý cơ sở, phòng học & chống trùng lịch (Conflict Guard)
 │   │   │   ├── class/                         # Khóa học, Module, Lớp học & Buổi học linh hoạt (TA optional)
+│   │   │   ├── coordinator/                   # Điều hành ca học hôm nay, Chăm sóc học viên (Care CRM), Chuyển lớp, Sự cố & Cấp phát học liệu
 │   │   │   ├── cockpit/                       # Bảng điều khiển ca dạy Live Cockpit, Bảng trắng & Mini Polls
 │   │   │   ├── substitute/                    # Đăng ký lịch rảnh, sàn nhờ dạy thay & quyết toán thù lao
 │   │   │   ├── inbox/                         # Hộp thư hỏi đáp tập trung (Unified Q&A) & ủy quyền Trợ giảng

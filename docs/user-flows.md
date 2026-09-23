@@ -2,7 +2,7 @@
 
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
 > **Tài liệu:** `docs/user-flows.md`  
-> **Phiên bản:** 1.0.0  
+> **Phiên bản:** 2.3.0 (Bổ sung Luồng 19 & 20 Vận Hành Ca Học, Chăm Sóc Học Viên, Wireframe 6 Class Coordinator)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
@@ -877,7 +877,84 @@ sequenceDiagram
 
 ---
 
-## 21. Bổ Sung Bản Thiết Kế Giao Diện Dành Cho Giáo Viên (Teacher Wireframes)
+## 21. Luồng 19: Điều Hành Ca Học Hôm Nay & Bắn Tin Khẩn Cấp Khi GV Đi Muộn (Coordinator Shift Operations)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Coord as Chuyên viên Vận hành (Coordinator)
+    participant UI as Coordinator Portal (/coordinator/today)
+    participant API as Backend Server
+    participant DB as PostgreSQL Database
+    actor Teacher as Giảng viên
+    actor Student as Học sinh trong lớp
+
+    Note over Coord, UI: Trước giờ học 10 phút (19:20)
+    Coord ->> UI: Mở bảng ca học hôm nay `/coordinator/today`
+    UI ->> API: GET /api/v1/coordinator/shifts/today
+    API ->> DB: Truy vấn các ca học diễn ra hôm nay & trạng thái check-in của GV
+    DB -->> API: Lớp FE-K32 (19:30): GV ThS. Hoàng Nam CHƯA check-in!
+    API -->> UI: Trả về trạng thái ca học
+    UI ->> UI: Hiển thị viền đỏ cảnh báo trễ [ NGUY CƠ TRỄ 10P ] rung chuông nhắc nhở
+
+    Coord ->> UI: Bấm nút [ 📞 Gọi Nhanh GV ]
+    Coord ->> Teacher: Trao đổi điện thoại, GV báo bị kẹt xe trên đường, sẽ vào lớp muộn 15 phút
+    Coord ->> UI: Bấm nút [ 📢 Phát Thông Báo Khẩn Cấp ]
+    Coord ->> UI: Nhập tin: "Lớp FE-K32 tối nay bắt đầu lúc 19:45 do thầy giáo kẹt xe. Các bạn vào phòng đọc trước tài liệu buổi 4 nhé!"
+    Coord ->> UI: Chọn kênh [ Zalo ZNS + App Push ] và bấm [ Gửi Ngay ]
+    UI ->> API: POST /api/v1/coordinator/sessions/:id/broadcast
+    API ->> DB: Lưu lịch sử thông báo lớp học
+    API -->> Student: Bắn tin Zalo ZNS & Push Notification tới 24 học sinh trong 3 giây
+    API -->> UI: Thông báo đã gửi thành công tới 24 học viên
+    UI ->> Coord: Cập nhật giao diện: [ Đã phát thông báo dời giờ 15p ]
+```
+
+---
+
+## 22. Luồng 20: Chăm Sóc Học Viên Nguy Cơ Thôi Học & Xử Lý Chuyển Lớp / Bảo Lưu (Care CRM & Deferrals)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Coord as Chuyên viên Vận hành (Coordinator)
+    participant UI as Student Care CRM (/coordinator/students)
+    participant API as Backend Server
+    participant DB as PostgreSQL Database
+    actor Student as Học viên (Lê Hoàng Long)
+    actor Manager as Quản lý Đào tạo (Academic Manager)
+
+    Note over Coord, UI: Sáng thứ Hai rà soát Radar nguy cơ bỏ học
+    Coord ->> UI: Mở tab [ Radar Cảnh Báo Thôi Học ]
+    UI ->> API: GET /api/v1/admin/analytics/churn-risk
+    API ->> DB: Quét học sinh vắng 2 buổi liên tiếp hoặc thiếu 3 BTVN
+    DB -->> API: Học sinh Lê Hoàng Long (Lớp FE-K32) vắng 2 buổi, nợ 3 bài tập (Mức độ: CRITICAL)
+    API -->> UI: Hiển thị thẻ học sinh kèm nút thao tác nhanh
+
+    Coord ->> UI: Bấm [ 📞 Gọi Điện Chăm Sóc ]
+    Coord ->> Student: Gọi điện trao đổi: Long báo được công ty cử đi công tác đột xuất 2 tháng, không thể tiếp tục khóa FE-K32 và xin bảo lưu
+    Coord ->> UI: Nhập Sổ nhật ký chăm sóc (`student_care_logs`):
+    Coord ->> UI: Lý do: [ ĐI CÔNG TÁC ], Giải pháp: [ BẢO LƯU 3 THÁNG ], Hẹn liên hệ lại: 15/12/2026
+    UI ->> API: POST /api/v1/coordinator/care-logs
+    API ->> DB: Lưu bản ghi nhật ký chăm sóc thành công
+
+    Coord ->> UI: Bấm [ 📝 Tạo Đơn Bảo Lưu Khóa Học ]
+    Coord ->> UI: Nhập số tháng bảo lưu: 3 tháng (Hạn chót: 15/01/2027)
+    UI ->> API: POST /api/v1/coordinator/transfers (transferType: DEFERRAL)
+    API ->> DB: Tự động tính học phí còn lại (3.500.000 VNĐ), tạo bản ghi class_transfers (status: PENDING)
+    API -->> UI: Đơn bảo lưu đã gửi tới Quản lý Đào tạo phê duyệt
+
+    Manager ->> UI: Mở Cổng Giáo vụ duyệt đơn chuyển lớp/bảo lưu
+    Manager ->> UI: Xem xét hồ sơ và bấm [ Chấp Thuận Bảo Lưu ]
+    UI ->> API: PUT /api/v1/coordinator/transfers/:id/approve (isApproved: true)
+    API ->> DB: 1. Cập nhật status = APPROVED; Chuyển trạng thái enrollment của Long sang DEFERRED
+    API ->> DB: 2. Cập nhật sĩ số lớp FE-K32 giảm 1 học viên
+    API -->> Student: Gửi email & Zalo: "Biên bản xác nhận bảo lưu khóa học 3 tháng (kèm file PDF có dấu mộc)"
+    API -->> Coord: Thông báo: "Đơn bảo lưu của Lê Hoàng Long đã được phê duyệt thành công"
+```
+
+---
+
+## 23. Bổ Sung Bản Thiết Kế Giao Diện Dành Cho Giáo Viên & Vận Hành (Wireframes)
 
 ### Wireframe 4: Bảng Điều Khiển Ca Dạy Trực Tiếp (`/teacher/classes/{id}/live`)
 
@@ -928,6 +1005,37 @@ sequenceDiagram
 |                                          |  [Tuấn Anh tiếp thu nhanh, cần giao thêm lab]|
 |                                          |                                             |
 |                                          |        [ LƯU ĐIỂM & TRẢ BÀI HỌC VIÊN ]      |
++---------------------------------------------------------------------------------------+
+```
+
+### Wireframe 6: Bảng Điều Hành Ca Học Hôm Nay & Chăm Sóc Học Viên (`/coordinator/today`)
+
+```text
++---------------------------------------------------------------------------------------+
+|  LMS CENTER - BẢNG ĐIỀU HÀNH CA HỌC HÔM NAY (SHIFT BOARD)       COORDINATOR: Phạm Mai |
++---------------------------------------------------------------------------------------+
+|  NGÀY: 23/10/2026 | TỔNG SỐ: 8 CA HỌC | [ CƠ SỞ: Cầu Giấy v ] [ KHUNG GIỜ: Ca Tối v ] |
+|                                                                                       |
+|  +---------------------------------------------------------------------------------+  |
+|  | ⚠️ CẢNH BÁO TRỄ (1 CA): Lớp FE-K32 (19:30 - LAB-201) - GV: ThS. Hoàng Nam       |  |
+|  | Trạng thái: Chưa Check-in (Còn 8 phút) | [ 📞 Gọi Nhanh GV ] [ 📢 Bắn Tin Khẩn ]|  |
+|  +---------------------------------------------------------------------------------+  |
+|                                                                                       |
+|  DANH SÁCH CÁC PHÒNG ĐANG HỌC:                                                        |
+|  +-------------------------------------+  +----------------------------------------+  |
+|  | PHÒNG LAB-101 (18:00 - 20:00)       |  | PHÒNG LAB-202 (19:30 - 21:30)          |  |
+|  | Lớp: Golang-K20 | GV: Nguyễn Tuấn   |  | Lớp: FE-K33 (Lớp Ghép Bù) | GV: Hải Đăng |  |
+|  | Sĩ số: 22/22 (Đủ 100%)              |  | Sĩ số: 18/20 (2 vắng, 1 học bù)        |  |
+|  | [ Đã Check-in 17:55 ] [ Đang Dạy ]  |  | [ Đã Check-in 19:22 ] [ Đang Dạy ]     |  |
+|  +-------------------------------------+  +----------------------------------------+  |
+|                                                                                       |
+|  +---------------------------------------------------------------------------------+  |
+|  | 🚨 HÀNG ĐỢI CAN THIỆP CHURN (HỌC VIÊN NGUY CƠ THÔI HỌC):                        |  |
+|  | 1. Lê Hoàng Long (FE-K32): Vắng 2 buổi liên tiếp [ 📞 Gọi CSKH ] [ 📝 Bảo Lưu ]  |  |
+|  | 2. Trần Văn Bình  (BE-K11): Nợ 3 bài tập về nhà  [ 📞 Gọi CSKH ] [ 🤝 Kèm 1-1 ] |  |
+|  +---------------------------------------------------------------------------------+  |
+|                                                                                       |
+|  [ 📢 PHÁT LOA THÔNG BÁO KHẨN CẢ TRUNG TÂM ]  [ 📦 CẤP PHÁT ĐỒNG PHỤC & HỌC LIỆU ]    |
 +---------------------------------------------------------------------------------------+
 ```
 

@@ -2,7 +2,7 @@
 
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
 > **Tài liệu:** `docs/test-plan.md`  
-> **Phiên bản:** 2.2.0 (Bổ sung Nhóm 10: Giảng Viên - Live Class Cockpit, AI Review, Voice Note, Hộp Thư Q&A, Dạy Thay & Sổ Tay Sư Phạm)  
+> **Phiên bản:** 2.3.0 (Bổ sung Nhóm 11: Class Coordinator - Bảng Điều Hành Ca Học, Sổ Chăm Sóc Học Viên CRM, Bảo Lưu & Chuyển Lớp, Báo Cáo Sự Cố & Quản Lý Giáo Trình Học Liệu)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
@@ -151,6 +151,18 @@ flowchart TD
 | **TC-INBOX-TA-01** | Q&A Inbox & TA | Hộp thư câu hỏi tập trung, trả lời nhanh và ủy quyền cho Trợ giảng kèm SLA | 1. Học sinh bình luận hỏi đáp tại phút 12:45 bài giảng video.<br>2. Câu hỏi hiển thị ngay trong Hộp thư Q&A của GV.<br>3. GV chọn mẫu trả lời nhanh (Snippet) hoặc bấm [Giao cho Trợ giảng] với SLA 2 giờ. | Câu hỏi được phân loại theo lớp và bài; Trợ giảng nhận thông báo đẩy và đồng hồ đếm ngược SLA; Khi TA trả lời, hệ thống gửi thông báo phản hồi ngay cho học sinh. | **P0** |
 | **TC-SUBSTITUTE-01** | Chợ dạy thay | Yêu cầu dạy thay khẩn cấp, tự động khớp lịch rảnh và chuyển đổi thù lao | 1. GV A có việc đột xuất vào tối Thứ 4, bấm [Tạo yêu cầu dạy thay].<br>2. Hệ thống quét `teacher_availabilities` tìm các GV cùng bộ môn đang rảnh.<br>3. GV B nhận được thông báo, bấm [Đồng ý dạy thay]. | Ca dạy của lớp tự động cập nhật `assignedTeacherId = GV_B`; Bảng tính công và thù lao buổi dạy đó tự động được ghi nhận cho GV B trong kỳ tính lương tháng. | **P0** |
 | **TC-PEDAGOGY-01** | Sổ tay sư phạm | Lưu ghi chú sư phạm bảo mật nội bộ và ngân hàng đề bài cá nhân | 1. Giảng viên nhập ghi chú sư phạm cho học viên: "Học viên tiếp thu logic nhanh nhưng lười viết test".<br>2. Kiểm tra quyền hiển thị.<br>3. Lưu bài tập mẫu vào Ngân hàng đề bài riêng và bấm [Nhân bản sang Lớp FE-K33]. | Ghi chú sư phạm chỉ GV và Trợ giảng đọc được, Học sinh và Phụ huynh hoàn toàn KHÔNG thấy; Đề bài mẫu được nhân bản sang lớp mới với đầy đủ test case và rubric. | **P1** |
+
+---
+
+### Nhóm 11: Quản Nhiệm & Vận Hành Lớp - Live Shift Board, Student Care CRM, Chuyển Lớp/Bảo Lưu, Sự Cố & Học Liệu (Class Coordinator Operations)
+
+| Mã Test Case | Phân hệ | Mô tả kịch bản | Các bước thực hiện | Kết quả mong đợi | Mức độ |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **TC-COORD-SHIFT-01** | Giám sát ca học | Giám sát ca học hôm nay, cảnh báo trễ 10p và phát loa thông báo khẩn | 1. Quản nhiệm mở `/coordinator/today`.<br>2. Ca học 19:30 bắt đầu, đến 19:40 giáo viên chưa check-in.<br>3. Watchdog kích hoạt cảnh báo đỏ.<br>4. Nhấp [Phát Loa Thông Báo Khẩn] gửi tin Zalo/Push đến học sinh: "Lớp bắt đầu muộn 15p do GV kẹt xe". | Dashboard hiển thị banner cảnh báo đỏ nhấp nháy; Nút phát loa gửi tin tức thì đến 100% học viên trong danh sách lớp; Audit log ghi nhận thông báo phát thành công lúc 19:41. | **P0 (Blocker)** |
+| **TC-COORD-CARE-01** | Student Care CRM | Chăm sóc học viên vắng 2 buổi liên tiếp qua Churn Radar và lưu nhật ký care log kèm lịch hẹn | 1. Xem danh sách cảnh báo Churn Radar (học viên vắng buổi 3 và 4).<br>2. Nhấp nút [Gọi điện chăm sóc] và bấm số phụ huynh.<br>3. Nhập ghi chú: "Học viên ốm sốt, đề xuất xếp học bù buổi 3 và 4 với lớp FE-K33".<br>4. Đặt lịch follow-up sau 3 ngày. | Tạo bản ghi `student_care_logs` thành công; Lịch hẹn tự động hiển thị trong Tab "Việc cần làm hôm nay" của Quản nhiệm; Học viên được gắn cờ "Đang chăm sóc". | **P0** |
+| **TC-COORD-TRANSFER-01** | Bảo lưu / Chuyển lớp | Tiếp nhận đơn bảo lưu khóa học, tính học phí còn lại và phê duyệt chuyển trạng thái DEFERRED | 1. Học sinh gửi đơn xin bảo lưu khóa học 3 tháng vì lý do công tác.<br>2. Quản nhiệm vào `/coordinator/transfers`, hệ thống tính số buổi đã học (8/24 buổi) và tự động tính `reservedCredit = 3,500,000 VND`.<br>3. Gửi đề xuất phê duyệt lên Trưởng ban Đào tạo duyệt `APPROVED`. | Trạng thái ghi danh của học viên chuyển thành `DEFERRED`; Ghế ngồi của học viên trong lớp được giải phóng; Thư xác nhận bảo lưu kèm thời hạn bảo lưu được tự động gửi qua email cho học viên. | **P0** |
+| **TC-COORD-INCIDENT-01** | Sự cố ca học | Báo cáo sự cố phòng học và phát thông báo đổi link Meet cho cả lớp | 1. Phòng học LAB-201 gặp sự cố mất điện lúc 19:45.<br>2. Quản nhiệm lập biên bản sự cố nhanh trên hệ thống: Loại `FACILITY_ISSUE`, Mức độ `HIGH`.<br>3. Hệ thống sinh link Google Meet dự phòng và tự động gửi thông báo SMS/Push chuyển sang học Online. | Bản ghi `session_incidents` được tạo; Học viên nhận được tin nhắn đổi phòng/đổi link sau 30 giây; Giảng viên tiếp tục dạy qua Meet mà không bị gián đoạn toàn bộ buổi. | **P1** |
+| **TC-COORD-MATERIAL-01** | Cấp phát học liệu | Quản lý cấp phát giáo trình, áo đồng phục và xác nhận bàn giao | 1. Lớp mới khai giảng 25 học viên.<br>2. Quản nhiệm tra cứu danh sách học liệu cần cấp: Giáo trình Golang + Áo đồng phục size L.<br>3. Khi học viên đến nhận, nhấp [Xác nhận đã giao] và lưu tên người nhận. | Bản ghi `student_materials` cập nhật `isDelivered = true`, `deliveredAt = NOW()`; Báo cáo tồn kho giáo trình tự động trừ 1; Danh sách lớp hiển thị tiến độ bàn giao đạt 100%. | **P1** |
 
 ---
 

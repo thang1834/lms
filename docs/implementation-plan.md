@@ -4,7 +4,7 @@
 > **Tài liệu:** `docs/implementation-plan.md`  
 > **Kiến trúc Blueprint:** [`gmhafiz/go8`](https://github.com/gmhafiz/go8) (Go 1.23+, `go-chi/chi/v5`, PostgreSQL 16, Goose SQL Migrations, `swaggo/swag`, `go-playground/validator/v10`)  
 > **Tài liệu tham chiếu:** [`docs/architecture.md`](file:///c:/Users/ducth/OneDrive/M%C3%A1y%20t%C3%ADnh/LMS/docs/architecture.md), [`docs/api-specification.md`](file:///c:/Users/ducth/OneDrive/M%C3%A1y%20t%C3%ADnh/LMS/docs/api-specification.md), [`docs/requirements.md`](file:///c:/Users/ducth/OneDrive/M%C3%A1y%20t%C3%ADnh/LMS/docs/requirements.md)  
-> **Phiên bản kế hoạch:** 2.2.0 (Bổ sung Live Class Cockpit, Whiteboard, AI Code Review, Voice Note, Q&A Inbox, Substitute Marketplace & Pedagogy - Tổng cộng 90+ REST API, 23 Domains)  
+> **Phiên bản kế hoạch:** 2.3.0 (Bổ sung Cổng Vận Hành Lớp & Chăm Sóc Học Viên CLASS_COORDINATOR - Tổng cộng 105+ REST API, 24 Domains)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
@@ -28,14 +28,14 @@ Hệ sinh thái Backend được xây dựng tuân thủ nghiêm ngặt mô hìn
   ```
 - **Chuẩn hóa 6 trường Audit & Xóa mềm (Universal Audit & Soft Delete):**
   - 100% bảng trong CSDL đều có 6 trường: `created_at`, `created_by`, `updated_at`, `updated_by`, `deleted_at`, `deleted_by`.
-  - Cấm Tuyệt Đối Hard Delete trên các bảng nghiệp vụ lõi (`users`, `subjects`, `courses`, `classes`, `assignments`, `tuition_invoices`, `teacher_payrolls`, `campuses`, `rooms`, `quizzes`, `contracts`). Mọi thao tác xóa đều cập nhật `deleted_at = NOW()` và các câu lệnh query mặc định lọc `WHERE deleted_at IS NULL`.
+  - Cấm Tuyệt Đối Hard Delete trên các bảng nghiệp vụ lõi (`users`, `subjects`, `courses`, `classes`, `assignments`, `tuition_invoices`, `teacher_payrolls`, `campuses`, `rooms`, `quizzes`, `contracts`, `student_care_logs`, `class_transfers`). Mọi thao tác xóa đều cập nhật `deleted_at = NOW()` và các câu lệnh query mặc định lọc `WHERE deleted_at IS NULL`.
 - **Tự động sinh tài liệu Swagger UI:** 100% các Handler functions phải có đầy đủ Swaggo annotations (`@Summary`, `@Description`, `@Tags`, `@Accept`, `@Produce`, `@Param`, `@Success`, `@Failure`, `@Router`) để tự động sinh Swagger UI qua lệnh `task swagger`.
 
 ---
 
-## 2. 📋 Danh Sách Toàn Bộ 90+ REST API Dự Tính (Chi Tiết 23 Domains)
+## 2. 📋 Danh Sách Toàn Bộ 105+ REST API Dự Tính (Chi Tiết 24 Domains)
 
-Dưới đây là danh sách phân rã toàn bộ 90+ endpoint API dự tính xây dựng, chia theo 23 phân hệ nghiệp vụ:
+Dưới đây là danh sách phân rã toàn bộ 105+ endpoint API dự tính xây dựng, chia theo 24 phân hệ nghiệp vụ:
 
 ### Phân Hệ 1: Xác Thực & Quản Lý Người Dùng (`internal/domain/auth` & `user`)
 | Method | Endpoint | Mô tả chức năng | Quyền hạn |
@@ -269,6 +269,20 @@ Dưới đây là danh sách phân rã toàn bộ 90+ endpoint API dự tính x�
 | `POST` | `/api/v1/teacher/assignment-banks` | Lưu bài tập mẫu vào ngân hàng cá nhân | Teacher |
 | `POST` | `/api/v1/teacher/assignment-banks/{id}/clone-to-class` | Nhân bản 1-click bài tập từ kho mẫu sang lớp mới | Teacher |
 
+### Phân Hệ 24: Cổng Vận Hành Lớp, Chăm Sóc Học Viên & Chuyển Lớp (`internal/domain/coordinator`)
+| Method | Endpoint | Mô tả chức năng | Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/coordinator/shifts/today` | Bảng điều hành toàn bộ ca học hôm nay kèm trạng thái Check-in GV | Coordinator |
+| `POST` | `/api/v1/coordinator/sessions/{id}/broadcast` | Phát loa thông báo khẩn cấp cả lớp (đổi phòng/Meet) qua Zalo/Push | Coordinator |
+| `POST` | `/api/v1/coordinator/care-logs` | Ghi nhận nhật ký chăm sóc học viên (Care CRM) & hẹn lịch nhắc | Coordinator |
+| `GET` | `/api/v1/coordinator/students/{id}/care-history` | Xem toàn bộ lịch sử chăm sóc và tương tác của học viên | Coordinator |
+| `POST` | `/api/v1/coordinator/transfers` | Tiếp nhận đơn xin chuyển lớp hoặc bảo lưu khóa học | Coordinator |
+| `PUT` | `/api/v1/coordinator/transfers/{id}/approve` | Giáo vụ trưởng hoặc Admin duyệt chuyển lớp / bảo lưu | Academic / Admin |
+| `POST` | `/api/v1/coordinator/sessions/{id}/incidents` | Báo cáo sự cố buổi học và kích hoạt phương án thay thế | Coordinator |
+| `GET` | `/api/v1/coordinator/classes/{id}/materials` | Danh sách theo dõi cấp phát giáo trình, áo đồng phục lớp | Coordinator |
+| `PUT` | `/api/v1/coordinator/materials/{id}/deliver` | Xác nhận bàn giao học liệu / đồng phục cho học viên | Coordinator |
+| `POST` | `/api/v1/coordinator/sessions/{id}/digest` | Gửi báo cáo tóm tắt buổi học tới Phụ huynh và Học sinh | Coordinator |
+
 ---
 
 ## 3. 🔭 Thiết Kế Hệ Thống Quan Sát OpenTelemetry (Logs, Metrics, Traces - Chuẩn `gmhafiz/go8`)
@@ -484,7 +498,16 @@ flowchart LR
   - Sổ tay sư phạm bảo mật nội bộ về từng học viên (chỉ GV và Trợ giảng xem được).
   - Ngân hàng bài tập mẫu cá nhân và công cụ nhân bản 1-click sang các lớp học mới.
 
-### Pha 7: Tài Chính, Khuyến Mãi & Bảng Lương (Billing, Discounts & Payroll)
+### Pha 7: Cổng Vận Hành Lớp & Chăm Sóc Học Viên (Class Operations & Student Care CRM)
+- **Domain `coordinator`:**
+  - Bảng điều phối ca học hôm nay `/coordinator/today` và Check-in Watchdog giám sát giảng viên trễ 10p.
+  - Phát loa thông báo khẩn cấp cả lớp (1-Click Broadcast) qua Zalo/Push/SMS khi đổi phòng hoặc đổi link Meet.
+  - Sổ nhật ký chăm sóc học viên (`student_care_logs`) liên kết trực tiếp với Churn Radar, đặt lịch nhắc follow-up.
+  - Quy trình xét duyệt chuyển lớp và bảo lưu khóa học (`class_transfers`), tự động tính học phí bảo lưu.
+  - Nhật ký sự cố vận hành buổi học (`session_incidents`) và quản lý cấp phát giáo trình, đồng phục (`student_materials`).
+  - Soạn thảo và gửi báo cáo tóm tắt buổi học (`coordinatorNote`) tới Phụ huynh và Học sinh.
+
+### Pha 8: Tài Chính, Khuyến Mãi & Bảng Lương (Billing, Discounts & Payroll)
 - **Domain `discount`:**
   - Quản lý mã giảm giá, kiểm tra điều kiện áp dụng và tính tiền khấu trừ.
 - **Domain `billing`:**
@@ -494,7 +517,7 @@ flowchart LR
 - **Domain `payroll`:**
   - Tự động quét ca dạy trong tháng (bao gồm cả ca dạy thay), tính lương cơ sở theo bậc lương, thưởng KPI (đánh giá $\ge 4.5$), phạt đi muộn, Admin duyệt quyết toán.
 
-### Pha 8: Worker, OTel Grafana Dashboards, Swagger & Kiểm Thử Toàn Trình (Automation & QA)
+### Pha 9: Worker, OTel Grafana Dashboards, Swagger & Kiểm Thử Toàn Trình (Automation & QA)
 - **Domain `notification`:**
   - Worker quét điểm danh sau 15p bắn tin báo vắng/đủ.
   - Worker quét ca học sau 10p cảnh báo GV đi muộn.
@@ -539,8 +562,9 @@ python .agents/skills/vulnerability-scanner/scripts/security_scan.py .
 - **Kiểm tra Traces trên Jaeger (`http://localhost:16686`):** Gửi request API (đăng nhập, lấy danh sách khóa học) và kiểm tra Waterfall Span hiển thị đầy đủ tầng HTTP `otelchi` và tầng CSDL `otelsql`.
 - **Kiểm tra Metrics trên Prometheus (`http://localhost:9090`):** Kiểm tra các metric `http_server_requests_total` và `lms_student_active_sessions` tăng trưởng chính xác.
 - **Kiểm tra Logs & Trace Correlation trên Grafana (`http://localhost:3300`):** Mở Grafana Explore, truy vấn Loki logs, chọn một log entry và nhấp vào nút **TraceID** để xem toàn bộ luồng request tương ứng trong Jaeger/Tempo.
-- **Kiểm tra Swagger UI (`http://localhost:8080/swagger/index.html`):** Kiểm tra danh sách 90+ endpoints hiển thị đầy đủ và có thể gửi request thử nghiệm.
+- **Kiểm tra Swagger UI (`http://localhost:8080/swagger/index.html`):** Kiểm tra danh sách 105+ endpoints hiển thị đầy đủ và có thể gửi request thử nghiệm.
 - **Kiểm tra Cấu hình Website SUPER_ADMIN:** Gọi API cập nhật màu sắc Header/Footer, Logo, Favicon; kiểm tra Client Nuxt UI render đúng nhận diện mới.
 - **Kiểm tra tính năng Soft Delete:** Thực hiện xóa môn học hoặc lớp học, kiểm tra trong PostgreSQL cột `deleted_at` được gán giờ và query `GET /api/v1/subjects` không trả về bản ghi đó.
 - **Kiểm tra mã VietQR:** Tạo đơn hàng áp coupon giảm giá, quét mã VietQR bằng app ngân hàng thật kiểm tra đúng số tiền và nội dung chuyển khoản.
 - **Kiểm tra Live Class Cockpit & AI Code Review:** Khởi động lớp học 1-click từ Cockpit, kiểm tra tự động check-in GV và render bảng vẽ Excalidraw; Kích hoạt AI phân tích bài tập học sinh và kiểm tra bản nháp nhận xét sư phạm tự sinh.
+- **Kiểm tra Cổng Coordinator & Chăm sóc học viên:** Truy cập `/coordinator/today` kiểm tra hiển thị đúng các ca học trong ngày; Thử nghiệm tạo nhật ký chăm sóc `student_care_logs` kèm lịch follow-up và kiểm tra luồng nộp/duyệt đơn xin chuyển lớp hoặc bảo lưu khóa học.
