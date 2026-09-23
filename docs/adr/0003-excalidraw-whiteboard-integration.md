@@ -1,7 +1,9 @@
 # ADR-0003: Tích Hợp Bảng Vẽ Kỹ Thuật Số Excalidraw qua Standalone IFrame và Go WebSocket Hub
 
 ## Status
-**Accepted** (2026-09-22)
+**Deferred (Tạm hoãn)** (2026-09-23)
+
+> **Ghi chú cập nhật:** Tạm thời hoãn việc tích hợp Excalidraw (React/IFrame) để tìm kiếm và đánh giá giải pháp bảng vẽ thuần **Vue 3 / Nuxt UI (Vue-native)** phù hợp hơn với kiến trúc frontend của dự án (ví dụ: `vue-konva`, `fabric.js`, `perfect-freehand` với SVG canvas), tránh sự cồng kềnh của IFrame bridge và phụ thuộc vào hệ sinh thái React.
 
 ## Context
 Trong các lớp học CNTT trực tuyến và Hybrid, giảng viên cần bảng vẽ kỹ thuật số trực quan để phác thảo sơ đồ kiến trúc hệ thống, luồng dữ liệu ERD và giải thích thuật toán trực tiếp cho học sinh. Dự án chọn tham khảo thư viện mã nguồn mở hàng đầu thế giới là [Excalidraw](https://github.com/excalidraw/excalidraw).  

@@ -958,7 +958,7 @@ erDiagram
     - `sessionId` (UUID, FK -> `class_sessions.id`).
     - `teacherId` (UUID, FK -> `teacher_profiles.id`): Giáo viên vẽ bài giảng.
     - `title` (String): Tiêu đề bản vẽ (ví dụ: "Sơ đồ kiến trúc Go Microservices").
-    - `boardData` (JSON): Tọa độ và nét vẽ Excalidraw/Tldraw elements.
+    - `boardData` (JSON): Tọa độ và nét vẽ vector elements (chuẩn bị cho Vue-native canvas).
     - `exportPdfUrl` (String, Nullable): URL file PDF xuất ra đính kèm buổi học.
     - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
@@ -1400,15 +1400,17 @@ Nhờ áp dụng blueprint `gmhafiz/go8`, toàn bộ các thao tác phát triể
 
 ---
 
-## 9. Tài Liệu Tham Chiếu & Hướng Dẫn Tích Hợp Bảng Vẽ Điện Tử Excalidraw (Excalidraw Reference)
+## 9. Định Hướng Bảng Vẽ Kỹ Thuật Số: Kế Hoạch Đánh Giá Giải Pháp Bảng Vẽ Thuần Vue (Vue-Native Whiteboard Plan & Reference)
 
-> **Tài liệu & Thư viện tham chiếu chính thức:**  
-> - **GitHub Repository:** [`excalidraw/excalidraw`](https://github.com/excalidraw/excalidraw) (Virtual whiteboard for sketching hand-drawn like diagrams - 64k+ Stars)  
-> - **Cổng tài liệu phát triển (Docs):** [`https://docs.excalidraw.com/`](https://docs.excalidraw.com/)  
-> - **NPM Core Package:** [`@excalidraw/excalidraw`](https://www.npmjs.com/package/@excalidraw/excalidraw)  
-> - **NPM Utilities Package:** [`@excalidraw/utils`](https://www.npmjs.com/package/@excalidraw/utils) (Các hàm tiện ích export SVG, PNG, load scene)  
-> - **Phiên bản khuyến nghị:** `@excalidraw/excalidraw@^0.17.x`  
-> - **Mục đích sử dụng:** Cung cấp bảng vẽ phác thảo tay tương tác trực tiếp trên trình duyệt tại **Live Class Cockpit (`/teacher/classes/{id}/live`)** cho giảng viên vẽ sơ đồ kiến trúc, giải thuật, luồng dữ liệu, lược đồ ERD và ghi chú code trong ca học.
+> [!NOTE] 
+> **Kế hoạch triển khai & Đánh giá công nghệ:**  
+> Dự án **tạm thời hoãn việc triển khai Excalidraw** (do thư viện này viết trên React và đòi hỏi tầng IFrame bridge trung gian) để ưu tiên tìm kiếm và triển khai giải pháp bảng vẽ kỹ thuật số thuần **Vue 3 / Nuxt UI (Vue-native)** trong thời gian tới.  
+> Các phương án Vue-native đang được đưa vào lộ trình đánh giá bao gồm:
+> 1. **Vue-Konva (`vue-konva`):** Canvas 2D engine hiệu năng cao, hỗ trợ kéo thả hình học, zoom/pan và kết xuất SVG/PNG mượt mà.
+> 2. **Fabric.js Wrapper (`vue-fabric-wrapper`):** Thư viện canvas hướng đối tượng mạnh mẽ, hỗ trợ đầy đủ các hình khối vector và xuất PDF.
+> 3. **Perfect Freehand + SVG (`perfect-freehand`):** Thuật toán làm mịn nét vẽ tay mượt mà như mực viết thật, dễ dàng dựng component canvas thuần Vue 3 với dung lượng siêu nhẹ (< 15KB).
+> 
+> *Toàn bộ tài liệu tham chiếu kiến trúc dưới đây được lưu giữ lại làm thiết kế tham khảo (Reference Design) về luồng đồng bộ WebSocket và cấu trúc dữ liệu vector JSON.*
 
 ```mermaid
 flowchart TD

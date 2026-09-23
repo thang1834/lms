@@ -57,10 +57,10 @@ Hệ thống tích hợp toàn diện 19 trụ cột nghiệp vụ:
     - Dashboard KPIs tài chính và vận hành thời gian thực.
     - Radar tự động gắn cờ đỏ học sinh có nguy cơ bỏ học (vắng 2 buổi liên tiếp hoặc thiếu 3 BTVN) để CSKH can thiệp kịp thời.
     - Ma trận đánh giá hiệu quả giảng viên (Teacher Performance Matrix) theo feedback, đúng giờ và tốc độ trả bài.
-15. **Khoang Lái Lớp Học Trực Tuyến & Bảng Vẽ Kỹ Thuật Số (Live Class Cockpit & Digital Whiteboard)**:
+15. **Khoang Lái Lớp Học Trực Tuyến & Bảng Trắng (Live Class Cockpit & Digital Whiteboard - Tạm Hoãn Triển Khai Excalidraw)**:
     - 1-click khởi động lớp: tự động mở Meet/Zoom, tự động check-in giảng viên và hiển thị phòng học.
     - Điểm danh nhanh 1 chạm cho cả lớp.
-    - Bảng vẽ kỹ thuật số tương tác chuẩn hóa theo [`excalidraw/excalidraw`](https://github.com/excalidraw/excalidraw): Tự động lưu Scene JSON (`elements`, `appState`) định kỳ 3s, hỗ trợ vẽ nhiều người qua WebSocket Hub và xuất bản PDF đính kèm buổi học.
+    - Bảng vẽ kỹ thuật số: Tạm hoãn thư viện Excalidraw (React); giữ kiến trúc mở sẵn sàng tích hợp giải pháp bảng vẽ thuần Vue 3 (Vue-native) trong các giai đoạn sau.
     - Tạo nhanh câu hỏi bình chọn trực tiếp (Mini Poll 2 phút) kèm biểu đồ kết quả thời gian thực.
 16. **Trợ Lý AI Chấm Bài Code & Nhận Xét Bằng Giọng Nói (AI Code Review & Voice Note Feedback)**:
     - Trợ lý AI quét phân tích mã nguồn Clean Code, phát hiện lỗi tiềm ẩn và tạo bản nháp nhận xét sư phạm kèm điểm đề xuất.
@@ -409,13 +409,13 @@ type Contract struct {
 	AuditFields
 }
 
-// 15. Khoang lái lớp học trực tuyến & Bảng vẽ kỹ thuật số (Tham khảo: https://github.com/excalidraw/excalidraw)
+// 15. Khoang lái lớp học trực tuyến & Bảng vẽ (Tạm hoãn Excalidraw, chờ giải pháp Vue-native)
 type ClassWhiteboard struct {
 	ID           uuid.UUID `json:"id" db:"id"`
 	SessionID    uuid.UUID `json:"sessionId" db:"session_id"`
 	TeacherID    uuid.UUID `json:"teacherId" db:"teacher_id"`
 	Title        string    `json:"title" db:"title"`
-	BoardData    string    `json:"boardData" db:"board_data"` // JSON (Excalidraw Scene schema: elements, appState, files)
+	BoardData    string    `json:"boardData" db:"board_data"` // JSON (Whiteboard vector elements & state - Vue canvas)
 	ExportPdfURL *string   `json:"exportPdfUrl,omitempty" db:"export_pdf_url"`
 	AuditFields
 }

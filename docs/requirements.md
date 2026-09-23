@@ -505,12 +505,9 @@ Tối ưu hóa trải nghiệm trực tiếp của giảng viên trong từng gi
 - **FR-COCKPIT-02 (Tương Tác Tức Thì - Quick Poll / Mini Quiz 2 Phút):**
   - Giảng viên có thể phát nhanh 1 câu hỏi bình chọn / trắc nghiệm ngắn trong 2 phút để kiểm tra độ hiểu bài ngay tại lớp.
   - Học viên bình chọn trực tiếp trên điện thoại/laptop; hệ thống hiển thị biểu đồ phần trăm kết quả theo thời gian thực (Real-time).
-- **FR-COCKPIT-03 (Bảng Trắng Kỹ Thuật Số Tương Tác - Interactive Digital Whiteboard):**
-  - **Tài liệu tham khảo kỹ thuật:** Chuẩn hóa theo kiến trúc mã nguồn mở của [`excalidraw/excalidraw`](https://github.com/excalidraw/excalidraw) (NPM: `@excalidraw/excalidraw` & `@excalidraw/utils`).
-  - Hỗ trợ giảng viên phác thảo sơ đồ kiến trúc hệ thống, cấu trúc dữ liệu, giải thuật, luồng xử lý và lược đồ CSDL theo phong cách vẽ tay trực quan.
-  - Cơ chế **Autosave 3 giây:** Tự động đồng bộ nét vẽ và lưu trữ cấu trúc Scene JSON (`elements`, `appState`, `files`) vào CSDL PostgreSQL (`class_whiteboards.board_data`).
-  - Hỗ trợ **Real-time Multiplayer:** Đồng bộ con trỏ chuột và nét vẽ tức thời qua WebSocket Hub giữa Giảng viên và Học viên.
-  - Tự động kết xuất file PDF/PNG vector chất lượng cao đính kèm vào phần tài liệu buổi học để toàn bộ học viên xem lại sau giờ học.
+- **FR-COCKPIT-03 (Bảng Trắng Kỹ Thuật Số - Digital Whiteboard - Tạm Hoãn Triển Khai Excalidraw):**
+  - **Định hướng công nghệ:** Tạm hoãn phương án tích hợp Excalidraw (React qua IFrame) để tìm kiếm và đánh giá giải pháp bảng vẽ thuần **Vue 3 / Nuxt UI (Vue-native)** phù hợp hơn với nền tảng frontend của hệ thống (ví dụ: `vue-konva`, `fabric.js`, `perfect-freehand` với SVG canvas).
+  - Kiến trúc dữ liệu và API Backend vẫn duy trì sẵn sàng hỗ trợ lưu trữ vector scene JSON và xuất PDF khi giải pháp Vue-native được lựa chọn và hoàn thiện trong giai đoạn tới.
 
 ---
 
@@ -671,7 +668,7 @@ Cầu nối minh bạch với phụ huynh và đảm bảo học viên nhận đ
 | **US-PDF-01** | Kế toán / Học viên | Tải biên lai thu học phí và chứng chỉ định dạng PDF | - Go PDF Engine sinh biên lai/chứng chỉ có mã QR xác thực trong dưới 1 giây. |
 | **US-BACKUP-01** | Hệ thống / DevOps | Sao lưu CSDL tự động hàng ngày lên Cloud Storage | - Cron 02:00 sáng tự động dump CSDL, mã hóa AES-256 và lưu trữ an toàn. |
 | **US-TEACH-COCKPIT-01** | Giảng viên | Điều khiển ca dạy tập trung qua Live Class Cockpit | - 1-click mở Meet/Zoom, điểm danh nhanh 1 chạm toàn bộ học sinh, tạo quick poll kiểm tra độ hiểu bài ngay trong giờ học. |
-| **US-TEACH-WHITEBOARD-01** | Giảng viên | Sử dụng bảng trắng kỹ thuật số giảng bài | - Vẽ sơ đồ kiến trúc, giải thuật trực tiếp; tự động lưu file đính kèm buổi học cho cả lớp xem lại. |
+| **US-TEACH-WHITEBOARD-01** | Giảng viên | Sử dụng bảng trắng kỹ thuật số giảng bài *(Tạm hoãn, chờ Vue-native)* | - Giao diện khoang lái sẵn sàng tích hợp giải pháp bảng vẽ thuần Vue 3 để vẽ sơ đồ trực tiếp và lưu bài đính kèm. |
 | **US-TEACH-AI-01** | Giảng viên | Dùng trợ lý AI hỗ trợ chấm bài tập lập trình | - AI quét code review, phát hiện vi phạm Clean Code và gợi ý bản nháp nhận xét để giáo viên duyệt nhanh. |
 | **US-TEACH-VOICE-01** | Giảng viên | Ghi âm nhận xét dặn dò bài tập bằng giọng nói | - Thu âm 30s - 2 phút nhận xét trực tiếp trên trình duyệt, đính kèm vào phiếu chấm gửi cho học sinh/phụ huynh. |
 | **US-TEACH-INBOX-01** | Giảng viên | Quản lý thắc mắc tập trung và giao việc cho Trợ giảng | - Gom câu hỏi từ video/BTVN vào Unified Inbox; phân công cho Trợ giảng trả lời kèm deadline SLA 2 giờ. |

@@ -232,7 +232,7 @@ Dưới đây là danh sách phân rã toàn bộ 105+ endpoint API dự tính x
 | `POST` | `/api/v1/teacher/sessions/{id}/start-cockpit` | Khởi động lớp 1-click (Auto check-in GV, lấy link Meet/Zoom, phòng học) | Teacher |
 | `POST` | `/api/v1/teacher/sessions/{id}/quick-attendance` | Điểm danh nhanh 1 chạm cho cả lớp | Teacher |
 | `GET` | `/api/v1/teacher/sessions/{id}/whiteboards` | Lấy danh sách bảng vẽ của buổi học | Teacher / Student |
-| `POST` | `/api/v1/teacher/sessions/{id}/whiteboards` | Tạo mới bảng vẽ hoặc autosave state Excalidraw JSON | Teacher |
+| `POST` | `/api/v1/teacher/sessions/{id}/whiteboards` | Tạo mới bảng vẽ hoặc autosave state vector JSON (Vue canvas) | Teacher |
 | `POST` | `/api/v1/teacher/whiteboards/{id}/export-pdf` | Xuất bảng vẽ ra file PDF đính kèm buổi học | Teacher |
 | `POST` | `/api/v1/teacher/sessions/{id}/polls` | Tạo câu hỏi bình chọn tương tác nhanh (Mini Poll 2 phút) | Teacher |
 | `POST` | `/api/v1/polls/{id}/vote` | Học viên bình chọn đáp án realtime | Student |
@@ -566,5 +566,5 @@ python .agents/skills/vulnerability-scanner/scripts/security_scan.py .
 - **Kiểm tra Cấu hình Website SUPER_ADMIN:** Gọi API cập nhật màu sắc Header/Footer, Logo, Favicon; kiểm tra Client Nuxt UI render đúng nhận diện mới.
 - **Kiểm tra tính năng Soft Delete:** Thực hiện xóa môn học hoặc lớp học, kiểm tra trong PostgreSQL cột `deleted_at` được gán giờ và query `GET /api/v1/subjects` không trả về bản ghi đó.
 - **Kiểm tra mã VietQR:** Tạo đơn hàng áp coupon giảm giá, quét mã VietQR bằng app ngân hàng thật kiểm tra đúng số tiền và nội dung chuyển khoản.
-- **Kiểm tra Live Class Cockpit & AI Code Review:** Khởi động lớp học 1-click từ Cockpit, kiểm tra tự động check-in GV và render bảng vẽ Excalidraw; Kích hoạt AI phân tích bài tập học sinh và kiểm tra bản nháp nhận xét sư phạm tự sinh.
+- **Kiểm tra Live Class Cockpit & AI Code Review:** Khởi động lớp học 1-click từ Cockpit, kiểm tra tự động check-in GV và mở Meet/Zoom; Kích hoạt AI phân tích bài tập học sinh và kiểm tra bản nháp nhận xét sư phạm tự sinh.
 - **Kiểm tra Cổng Coordinator & Chăm sóc học viên:** Truy cập `/coordinator/today` kiểm tra hiển thị đúng các ca học trong ngày; Thử nghiệm tạo nhật ký chăm sóc `student_care_logs` kèm lịch follow-up và kiểm tra luồng nộp/duyệt đơn xin chuyển lớp hoặc bảo lưu khóa học.

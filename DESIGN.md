@@ -164,13 +164,14 @@ Hệ thống sử dụng bố cục chuẩn **App Shell**:
   - `[ Vắng mặt ]` (Đỏ)
 - Kèm theo ô nhập ghi chú cá nhân (ví dụ: "xin phép về sớm 15p").
 
-### 5.5 Khoang Lái Lớp Học Trực Tuyến & Bảng Vẽ Excalidraw (Live Cockpit & Digital Whiteboard)
+### 5.5 Khoang Lái Lớp Học Trực Tuyến & Bảng Trắng (Live Class Cockpit & Digital Whiteboard)
 - **Vị trí:** Màn hình `/teacher/classes/{id}/live`.
 - **Quy chuẩn:**
   - Nút Primary CTA: `[ Bắt đầu lớp học ]` màu `#0284c7` (kích thước lớn, kèm icon Video Camera) tự động mở Meet/Zoom trong tab mới và check-in GV.
-  - Bảng vẽ Excalidraw nhúng qua IFrame container độc lập (`/whiteboard/index.html`), viền bo `12px`, chiều cao cố định `600px` (hoặc Fullscreen).
-  - Thanh trạng thái kết nối WebSocket Hub: Hiển thị chấm xanh `● Đã kết nối (5 học viên đang vẽ)` hoặc đỏ khi mất kết nối.
-  - Nút `[ Xuất PDF bài học ]` màu `#10b981` xuất bản file và đính kèm vào bài giảng.
+  - Điểm danh nhanh 1 chạm (Quick Attendance 1-Click).
+  - Khởi tạo nhanh Mini Poll 2 phút kèm biểu đồ kết quả thời gian thực.
+  - **Bảng vẽ kỹ thuật số (Digital Whiteboard):** Tạm hoãn tích hợp thư viện Excalidraw (React/IFrame); khu vực bảng vẽ bố trí container sẵn sàng để tích hợp giải pháp bảng vẽ thuần **Vue 3 / Nuxt UI (Vue-native)** trong các giai đoạn phát triển tiếp theo.
+  - Thanh trạng thái lớp học: Hiển thị thời gian ca dạy, số học viên có mặt và link phòng học ảo.
 
 ### 5.6 Bảng Điều Hành Ca Học Hôm Nay & Watchdog Cảnh Báo Đỏ (Live Shift Board & Watchdog Banner)
 - **Vị trí:** Màn hình `/coordinator/today`.

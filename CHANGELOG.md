@@ -10,6 +10,10 @@ Tất cả những thay đổi đáng chú ý của dự án **LMS Center Platfo
 ### Planned
 - Tích hợp cổng thanh toán trực tiếp VNPay & Momo song song với VietQR.
 - Cổng thi trắc nghiệm trực tuyến chống gian lận qua WebRTC Proctored Camera.
+- Nghiên cứu và triển khai giải pháp Bảng vẽ kỹ thuật số thuần Vue 3 (Vue-native Whiteboard) thay thế cho Excalidraw/React IFrame.
+
+### Changed
+- **Digital Whiteboard:** Tạm hoãn giải pháp Excalidraw qua IFrame (chuyển trạng thái ADR-0003 sang `Deferred`) để ưu tiên tìm kiếm giải pháp tương thích sâu với Nuxt UI / Vue 3.
 
 ---
 

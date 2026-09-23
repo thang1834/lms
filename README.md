@@ -61,7 +61,7 @@ npm run dev
 
 1. **Chuẩn Hóa Phân Quyền Hạt Nhân Dynamic RBAC:** 8 vai trò chuyên biệt (`SUPER_ADMIN`, `ACADEMIC_MANAGER`, `CLASS_COORDINATOR`, `TEACHER`, `TA`, `EXAMINER`, `STUDENT`, `PARENT`) quản lý qua bảng `roles`, `permissions`, `role_permissions`.
 2. **Cơ Chế Xếp Lịch Học Linh Hoạt (Flexible Scheduling Engine):** Thiết lập lịch định kỳ 1 tuần 1 hoặc nhiều buổi; dời ngày học, đổi ca, đổi phòng học hoặc đổi link Meet/Zoom từng buổi.
-3. **Khoang Lái Lớp Học Trực Tuyến & Bảng Vẽ Kỹ Thuật Số (Live Class Cockpit & Digital Whiteboard):** 1-Click mở Meet/Zoom, tự động check-in GV, bảng vẽ chuẩn Excalidraw thời gian thực, Mini Poll 2 phút.
+3. **Khoang Lái Lớp Học Trực Tuyến (Live Class Cockpit):** 1-Click mở Meet/Zoom, tự động check-in GV, Mini Poll 2 phút, điểm danh nhanh 1 chạm (tính năng Bảng vẽ kỹ thuật số tạm hoãn để đánh giá giải pháp thuần Vue).
 4. **Trợ Lý AI Chấm Bài Monaco & Nhận Xét Giọng Nói (AI Code Review & Voice Note):** Trợ lý AI phân tích Clean Code, phát hiện lỗi; ghi âm nhận xét giọng nói 30s-2m trực tiếp trên web.
 5. **Hộp Thư Q&A Tập Trung & Phân Công Trợ Giảng (Unified Q&A Inbox & TA Delegation):** Gom thắc mắc từ video bài giảng (kèm timestamp) và bài tập; kho câu trả lời mẫu (Snippets); SLA 2 giờ cho Trợ giảng.
 6. **Chợ Dạy Thay, Lịch Rảnh & Sổ Tay Sư Phạm (Substitute Marketplace & Pedagogy):** Quản lý lịch rảnh tuần, khớp nối tự động ca dạy thay chuyển đổi thù lao, sổ tay ghi chú sư phạm bí mật giữa GV & TA.
@@ -116,7 +116,7 @@ Dự án duy trì hệ thống tài liệu kỹ thuật toàn diện, đồng b�
 
 - [**`DESIGN.md`**](DESIGN.md): Quy chuẩn Design Tokens, UI Theme (Sky/Ocean Blue & Emerald, cấm màu tím), Typography, Monaco Editor & Bảng vẽ.
 - [**`docs/requirements.md`**](docs/requirements.md): Đặc tả yêu cầu phần mềm SRS v1.8.0 (31 phân hệ, 46 User Stories chi tiết Acceptance Criteria).
-- [**`docs/architecture.md`**](docs/architecture.md): Kiến trúc Clean Go8 v2.4.0 (ERD 59 bảng CSDL, 19 Goose Migrations, RBAC Matrix, Excalidraw Reference).
+- [**`docs/architecture.md`**](docs/architecture.md): Kiến trúc Clean Go8 v2.4.0 (ERD 59 bảng CSDL, 19 Goose Migrations, RBAC Matrix, Kế hoạch Vue-native Whiteboard).
 - [**`docs/api-specification.md`**](docs/api-specification.md): Đặc tả chi tiết 105+ REST API Handlers, 100% Swagger annotations & Go DTO structs.
 - [**`docs/implementation-plan.md`**](docs/implementation-plan.md): Kế hoạch triển khai kỹ thuật v2.3.0 (24 Go Domains, OTel Stack, 8 Pha Roadmap).
 - [**`docs/user-flows.md`**](docs/user-flows.md): 20 Sơ đồ tuần tự tương tác (Mermaid) & 6 Wireframes màn hình chính.
