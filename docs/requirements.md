@@ -85,10 +85,33 @@ flowchart TD
 
 ## 3. Yêu Cầu Chức Năng Chi Tiết (Functional Requirements)
 
-### Phân hệ 1: Quản Trị RBAC & Phân Quyền Hạt Nhân (Dynamic RBAC Engine)
+### Phân hệ 1: Quản Trị Hệ Thống, Người Dùng, Cấu Hình Website & Phân Quyền Hạt Nhân (SUPER_ADMIN Portal)
 
-- **FR-RBAC-01 (Quản lý Roles & Permissions):** CSDL sử dụng các bảng `roles`, `permissions`, `role_permissions`, `user_roles`. Super Admin có thể tạo thêm role mới (ví dụ: "Nhân viên Tư vấn Tuyển sinh", "Kế toán") và gán các permissions cụ thể.
-- **FR-RBAC-02 (Cấp quyền linh hoạt):** Một người dùng có thể đảm nhiệm nhiều vai trò (ví dụ: vừa là Giảng viên vừa là Quản lý Đào tạo).
+- **FR-USER-01 (Quản trị Người Dùng Toàn Diện - User Management):**
+  - Quản trị viên cấp cao (SUPER_ADMIN) quản lý danh sách toàn bộ người dùng trong hệ thống (Học viên, Phụ huynh, Giảng viên, Trợ giảng, Giám khảo, Vận hành lớp, Quản lý đào tạo).
+  - Tìm kiếm theo Họ tên, Email, Số điện thoại, Mã học sinh; Lọc theo Vai trò và Trạng thái hoạt động.
+  - CRUD User: Tạo tài khoản nhân sự mới, chỉnh sửa thông tin, đặt lại mật khẩu, kích hoạt hoặc vô hiệu hóa (`isActive = false`).
+  - Gán và thu hồi linh hoạt 1 hoặc nhiều vai trò cho từng người dùng (Multi-Role Support).
+  - Áp dụng xóa mềm (Soft Delete) có lưu vết `deleted_at`, `deleted_by`; nghiêm cấm xóa vật lý (Hard Delete).
+- **FR-RBAC-01 (Quản lý Roles & Permissions):**
+  - CSDL sử dụng các bảng `roles`, `permissions`, `role_permissions`, `user_roles`.
+  - Super Admin có thể tạo thêm role mới (ví dụ: "Nhân viên Tư vấn Tuyển sinh", "Kế toán Thu ngân") và tick chọn các permissions chi tiết theo từng phân hệ (`classes.create`, `payroll.approve`, `settings.edit`...).
+- **FR-WEB-01 (Quản lý Thương hiệu & Giao diện Website - Whitelabel Branding Settings):**
+  - Super Admin có thể tùy biến toàn bộ nhận diện thương hiệu của trung tâm mà không cần can thiệp mã nguồn:
+    - **Logo & Biểu tượng:** Tải lên logo Header (hỗ trợ logo nền sáng và nền tối), thay đổi icon favicon trình duyệt (`faviconUrl`).
+    - **Tùy biến Màu sắc Giao diện:** Thiết lập mã màu nền Header (`headerBgColor`), màu chữ Header (`headerTextColor`), màu nền Footer (`footerBgColor`), màu chữ Footer (`footerTextColor`), màu nhấn thương hiệu (`primaryColor` tuân thủ bảng màu chuẩn không dùng tím của `DESIGN.md`).
+    - **Thông tin Website:** Tên hệ thống / Trung tâm (`siteTitle`), slogan (`siteTagline`), nội dung bản quyền Footer (`footerCopyright`).
+    - **Thông tin Liên hệ:** Hotline, email hỗ trợ, địa chỉ trụ sở/cơ sở đào tạo, danh sách mạng xã hội (Facebook, YouTube, Zalo, TikTok).
+    - **Tối ưu SEO:** Meta Title, Meta Description, ảnh chia sẻ mạng xã hội (OG Image).
+- **FR-INT-01 (Cấu hình Tích hợp & Cổng Thanh toán):**
+  - Cấu hình tài khoản ngân hàng thụ hưởng VietQR (Mã ngân hàng, Số tài khoản, Tên chủ tài khoản, Cú pháp chuyển khoản mặc định).
+  - Cấu hình Webhook Secret tiếp nhận thông báo chuyển khoản tự động (SePay / Casso).
+  - Cấu hình Zalo ZNS / SMS Gateway (App ID, Secret Key, Template IDs cho tin nhắn điểm danh, nhắc lịch, cảnh báo GV trễ).
+  - Cấu hình máy chủ gửi Email SMTP (Host, Port, Username, Password, Sender Name).
+- **FR-AUDIT-01 (Nhật ký Kiểm toán Hệ thống - System Audit Logs):**
+  - Tự động ghi vết toàn bộ các hành động nhạy cảm trong hệ thống (ai sửa điểm số, ai duyệt bảng lương, ai dời lịch học, ai gán quyền).
+  - Bảng log lưu thông tin: `actor_id`, `action`, `resource_type`, `resource_id`, `diff_json`, `ip_address`, `user_agent`, `created_at`.
+  - Super Admin có giao diện tra cứu và xuất báo cáo kiểm toán.
 
 ---
 

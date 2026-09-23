@@ -1102,6 +1102,228 @@ type TeacherPayrollItemDetail struct {
 
 ---
 
+### Phân Hệ 14: Quản Trị Hệ Thống, Nhận Diện Thương Hiệu Website & Kiểm Toán (`internal/domain/system` & `admin`)
+
+#### 14.1 `GET /api/v1/settings/website` - Lấy cấu hình nhận diện thương hiệu & giao diện website (Public)
+
+```go
+// GetWebsiteSettings godoc
+// @Summary Lấy cấu hình nhận diện thương hiệu công khai của website
+// @Description API công khai (không cần login) cho Client Nuxt UI gọi lúc khởi tạo để hiển thị Logo, Favicon, Tiêu đề trang, Màu Header/Footer, Hotline và thông tin liên hệ
+// @Tags System Settings
+// @Produce json
+// @Success 200 {object} response.Envelope{data=dto.WebsiteSettingsResponse} "Lấy cấu hình website thành công"
+// @Router /api/v1/settings/website [get]
+func (h *SystemHandler) GetWebsiteSettings(w http.ResponseWriter, r *http.Request) {
+    // ...
+}
+```
+
+#### 14.2 `PUT /api/v1/admin/settings/website` - Super Admin tùy biến giao diện & thương hiệu website
+
+```go
+// UpdateWebsiteSettings godoc
+// @Summary Super Admin tùy biến thương hiệu website (Logo, Favicon, Màu sắc Header/Footer)
+// @Description Cho phép Super Admin thay đổi nhận diện thương hiệu toàn diện: Tên website, Slogan, Favicon, Logo sáng/tối, Banner, Màu nền & chữ Header/Footer, Màu nhấn (primary color), Hotline và SEO
+// @Tags System Settings
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.UpdateWebsiteSettingsRequest true "Cấu hình thương hiệu mới"
+// @Success 200 {object} response.Envelope{data=dto.WebsiteSettingsResponse} "Cập nhật cấu hình website thành công"
+// @Failure 400 {object} response.Envelope{error=response.ErrorDetail} "Dữ liệu cấu hình không hợp lệ"
+// @Failure 403 {object} response.Envelope{error=response.ErrorDetail} "Chỉ SUPER_ADMIN mới có quyền cập nhật"
+// @Router /api/v1/admin/settings/website [put]
+func (h *SystemHandler) UpdateWebsiteSettings(w http.ResponseWriter, r *http.Request) {
+    // ...
+}
+```
+
+#### 14.3 `GET /api/v1/admin/users` - Super Admin quản lý danh sách người dùng toàn trung tâm
+
+```go
+// ListAdminUsers godoc
+// @Summary Danh sách người dùng toàn trung tâm (kèm bộ lọc đa chiều)
+// @Description Quản trị viên tra cứu người dùng theo từ khóa (Tên, Email, SĐT, Mã HV), lọc theo Vai trò (Role) và Trạng thái kích hoạt (isActive)
+// @Tags User Management
+// @Produce json
+// @Security BearerAuth
+// @Param search query string false "Từ khóa tìm kiếm" example("Nguyễn Văn")
+// @Param role query string false "Mã vai trò" example("TEACHER")
+// @Param isActive query bool false "Lọc trạng thái hoạt động" example(true)
+// @Param page query int false "Trang hiện tại" example(1)
+// @Param pageSize query int false "Kích thước trang" example(20)
+// @Success 200 {object} response.Envelope{data=[]dto.AdminUserItemResponse} "Lấy danh sách người dùng thành công"
+// @Failure 403 {object} response.Envelope{error=response.ErrorDetail} "Không đủ quyền hạn"
+// @Router /api/v1/admin/users [get]
+func (h *UserHandler) ListAdminUsers(w http.ResponseWriter, r *http.Request) {
+    // ...
+}
+```
+
+#### 14.4 `POST /api/v1/admin/users` - Super Admin tạo tài khoản nhân sự mới
+
+```go
+// CreateAdminUser godoc
+// @Summary Tạo mới tài khoản nhân sự (Giảng viên, Trợ giảng, Giám khảo, Vận hành)
+// @Description Khởi tạo tài khoản người dùng và gán vai trò ban đầu cùng thông tin hồ sơ chuyên ngành
+// @Tags User Management
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.CreateAdminUserRequest true "Thông tin tài khoản mới"
+// @Success 201 {object} response.Envelope{data=dto.AdminUserItemResponse} "Tạo người dùng thành công"
+// @Failure 400 {object} response.Envelope{error=response.ErrorDetail} "Email đã tồn tại hoặc mật khẩu không đủ mạnh"
+// @Failure 403 {object} response.Envelope{error=response.ErrorDetail} "Không đủ quyền hạn"
+// @Router /api/v1/admin/users [post]
+func (h *UserHandler) CreateAdminUser(w http.ResponseWriter, r *http.Request) {
+    // ...
+}
+```
+
+#### 14.5 `PUT /api/v1/admin/users/{id}/roles` - Super Admin gán/thu hồi vai trò
+
+```go
+// UpdateUserRoles godoc
+// @Summary Gán hoặc thu hồi vai trò của người dùng (Multi-Role)
+// @Description Cập nhật danh sách các vai trò (roles) được cấp cho một người dùng cụ thể
+// @Tags User Management
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "ID người dùng (UUID)" format(uuid)
+// @Param request body dto.UpdateUserRolesRequest true "Danh sách mã vai trò mới"
+// @Success 200 {object} response.Envelope{message=string} "Cập nhật vai trò thành công"
+// @Failure 404 {object} response.Envelope{error=response.ErrorDetail} "Không tìm thấy người dùng"
+// @Router /api/v1/admin/users/{id}/roles [put]
+func (h *UserHandler) UpdateUserRoles(w http.ResponseWriter, r *http.Request) {
+    // ...
+}
+```
+
+#### 14.6 `PUT /api/v1/admin/users/{id}/status` - Super Admin khóa hoặc mở khóa tài khoản
+
+```go
+// ToggleUserStatus godoc
+// @Summary Kích hoạt hoặc Vô hiệu hóa tài khoản người dùng
+// @Description Cho phép Super Admin vô hiệu hóa ngay quyền đăng nhập của nhân sự nghỉ việc hoặc học sinh vi phạm quy chế
+// @Tags User Management
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "ID người dùng (UUID)" format(uuid)
+// @Param request body dto.ToggleUserStatusRequest true "Trạng thái kích hoạt mới"
+// @Success 200 {object} response.Envelope{message=string} "Cập nhật trạng thái người dùng thành công"
+// @Router /api/v1/admin/users/{id}/status [put]
+func (h *UserHandler) ToggleUserStatus(w http.ResponseWriter, r *http.Request) {
+    // ...
+}
+```
+
+#### 14.7 `GET /api/v1/admin/audit-logs` - Super Admin xem nhật ký kiểm toán toàn hệ thống
+
+```go
+// ListAuditLogs godoc
+// @Summary Tra cứu nhật ký kiểm toán hệ thống (Audit Logs)
+// @Description Cho phép Super Admin kiểm tra lịch sử các hành động nhạy cảm: Thay đổi điểm số, Duyệt lương, Dời lịch học, Cấp quyền, Đổi cấu hình
+// @Tags System Audit
+// @Produce json
+// @Security BearerAuth
+// @Param action query string false "Lọc theo hành động" example("PAYROLL_APPROVE")
+// @Param resourceType query string false "Loại tài nguyên" example("PAYROLL")
+// @Param page query int false "Trang hiện tại" example(1)
+// @Param pageSize query int false "Kích thước trang" example(50)
+// @Success 200 {object} response.Envelope{data=[]dto.AuditLogItemResponse} "Lấy nhật ký kiểm toán thành công"
+// @Failure 403 {object} response.Envelope{error=response.ErrorDetail} "Chỉ SUPER_ADMIN mới có quyền tra cứu"
+// @Router /api/v1/admin/audit-logs [get]
+func (h *SystemHandler) ListAuditLogs(w http.ResponseWriter, r *http.Request) {
+    // ...
+}
+```
+
+- **DTO Request & Response Structs (System, Website & User Management):**
+```go
+type WebsiteSettingsResponse struct {
+	SiteTitle       string            `json:"siteTitle" example:"LMS Center - Nền Tảng Đào Tạo Công Nghệ"`
+	SiteTagline     string            `json:"siteTagline" example:"Học thực chiến, việc làm ngay"`
+	LogoURL         string            `json:"logoUrl" example:"https://storage.lms.edu.vn/brand/logo.svg"`
+	LogoDarkURL     string            `json:"logoDarkUrl" example:"https://storage.lms.edu.vn/brand/logo-dark.svg"`
+	FaviconURL      string            `json:"faviconUrl" example:"https://storage.lms.edu.vn/brand/favicon.ico"`
+	HeaderBgColor   string            `json:"headerBgColor" example:"#0f172a"`
+	HeaderTextColor string            `json:"headerTextColor" example:"#f8fafc"`
+	FooterBgColor   string            `json:"footerBgColor" example:"#0f172a"`
+	FooterTextColor string            `json:"footerTextColor" example:"#94a3b8"`
+	FooterCopyright string            `json:"footerCopyright" example:"© 2026 LMS Center Platform. All rights reserved."`
+	PrimaryColor    string            `json:"primaryColor" example:"#0284c7"`
+	BannerURL       string            `json:"bannerUrl" example:"https://storage.lms.edu.vn/brand/hero-banner.webp"`
+	Hotline         string            `json:"hotline" example:"1900 6868"`
+	ContactEmail    string            `json:"contactEmail" example:"contact@lms.edu.vn"`
+	Address         string            `json:"address" example:"Tòa nhà Công nghệ, Cầu Giấy, Hà Nội"`
+	SocialLinks     map[string]string `json:"socialLinks"`
+}
+
+type UpdateWebsiteSettingsRequest struct {
+	SiteTitle       string            `json:"siteTitle" validate:"required,min=2" example:"LMS Center Platform"`
+	SiteTagline     *string           `json:"siteTagline,omitempty" example:"Nền tảng đào tạo lập trình thực chiến"`
+	LogoURL         *string           `json:"logoUrl,omitempty" example:"https://storage.lms.edu.vn/brand/logo.svg"`
+	LogoDarkURL     *string           `json:"logoDarkUrl,omitempty" example:"https://storage.lms.edu.vn/brand/logo-dark.svg"`
+	FaviconURL      *string           `json:"faviconUrl,omitempty" example:"https://storage.lms.edu.vn/brand/favicon.ico"`
+	HeaderBgColor   string            `json:"headerBgColor" validate:"required" example:"#0f172a"`
+	HeaderTextColor string            `json:"headerTextColor" validate:"required" example:"#f8fafc"`
+	FooterBgColor   string            `json:"footerBgColor" validate:"required" example:"#0f172a"`
+	FooterTextColor string            `json:"footerTextColor" validate:"required" example:"#94a3b8"`
+	FooterCopyright *string           `json:"footerCopyright,omitempty" example:"© 2026 LMS Center. Bản quyền thuộc về Trung tâm Đào tạo."`
+	PrimaryColor    string            `json:"primaryColor" validate:"required" example:"#0284c7"`
+	BannerURL       *string           `json:"bannerUrl,omitempty"`
+	Hotline         *string           `json:"hotline,omitempty" example:"1900 6868"`
+	ContactEmail    *string           `json:"contactEmail,omitempty" example:"support@lms.edu.vn"`
+	Address         *string           `json:"address,omitempty"`
+	SocialLinks     map[string]string `json:"socialLinks,omitempty"`
+}
+
+type AdminUserItemResponse struct {
+	ID        uuid.UUID `json:"id" example:"a1eebc99-9c0b-4ef8-bb6d-6bb9bd380123"`
+	Email     string    `json:"email" example:"nam.le@lms.edu.vn"`
+	FullName  string    `json:"fullName" example:"Lê Hoàng Nam"`
+	Phone     *string   `json:"phone,omitempty" example:"0988888888"`
+	AvatarURL *string   `json:"avatarUrl,omitempty"`
+	IsActive  bool      `json:"isActive" example:"true"`
+	Roles     []string  `json:"roles" example:"[\"TEACHER\"]"`
+	CreatedAt time.Time `json:"createdAt" example:"2026-09-01T08:00:00Z"`
+}
+
+type CreateAdminUserRequest struct {
+	Email    string   `json:"email" validate:"required,email" example:"giangvien.moi@lms.edu.vn"`
+	Password string   `json:"password" validate:"required,min=8" example:"SecurePassword@2026"`
+	FullName string   `json:"fullName" validate:"required,min=2" example:"Trần Văn B"`
+	Phone    *string  `json:"phone,omitempty" example:"0977777777"`
+	RoleCodes []string `json:"roleCodes" validate:"required,min=1" example:"[\"TEACHER\"]"`
+}
+
+type UpdateUserRolesRequest struct {
+	RoleCodes []string `json:"roleCodes" validate:"required,min=1" example:"[\"TEACHER\", \"ACADEMIC_MANAGER\"]"`
+}
+
+type ToggleUserStatusRequest struct {
+	IsActive bool   `json:"isActive" example:"false"`
+	Reason   string `json:"reason" validate:"required,min=5" example:"Nhân sự đã thanh lý hợp đồng lao động"`
+}
+
+type AuditLogItemResponse struct {
+	ID           uuid.UUID `json:"id" example:"e1eebc99-9c0b-4ef8-bb6d-6bb9bd380456"`
+	ActorID      uuid.UUID `json:"actorId" example:"c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33"`
+	ActorEmail   string    `json:"actorEmail" example:"admin@lms.edu.vn"`
+	Action       string    `json:"action" example:"PAYROLL_APPROVE"`
+	ResourceType string    `json:"resourceType" example:"PAYROLL"`
+	ResourceID   string    `json:"resourceId" example:"f1eebc99-9c0b-4ef8-bb6d-6bb9bd380999"`
+	DiffJSON     *string   `json:"diffJson,omitempty"`
+	IPAddress    *string   `json:"ipAddress,omitempty" example:"14.226.24.12"`
+	CreatedAt    time.Time `json:"createdAt" example:"2026-10-25T14:30:00Z"`
+}
+```
+
+---
+
 ## 3. Quy Trình Khởi Tạo & Xem Swagger UI Trên Môi Trường Local
 
 1. **Khởi tạo và cập nhật tài liệu Swagger:**

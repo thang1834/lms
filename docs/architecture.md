@@ -734,11 +734,53 @@ erDiagram
 
 ---
 
+#### Nhóm 12: Cấu Hình Website Thương Hiệu & Nhật Ký Kiểm Toán (Whitelabel Website Settings & System Audit Logs)
+
+36. **`website_settings`** (Cấu hình nhận diện thương hiệu & giao diện website - Super Admin Whitelabel):
+    - `id` (UUID, PK).
+    - `siteTitle` (String): Tên trung tâm / hệ thống (hiển thị tab trình duyệt và Header).
+    - `siteTagline` (String, Nullable): Slogan trung tâm.
+    - `logoUrl` (String, Nullable): URL ảnh logo hiển thị trên Header (chế độ nền sáng).
+    - `logoDarkUrl` (String, Nullable): URL ảnh logo cho chế độ nền tối (Dark mode).
+    - `faviconUrl` (String, Nullable): Icon hiển thị trên tab trình duyệt (.ico / .svg / .png).
+    - `headerBgColor` (String, Default `"#0f172a"`): Mã màu nền thanh điều hướng Header.
+    - `headerTextColor` (String, Default `"#f8fafc"`): Mã màu chữ thanh điều hướng Header.
+    - `footerBgColor` (String, Default `"#0f172a"`): Mã màu nền chân trang Footer.
+    - `footerTextColor` (String, Default `"#94a3b8"`): Mã màu chữ chân trang Footer.
+    - `footerCopyright` (String, Nullable): Nội dung bản quyền chân trang.
+    - `primaryColor` (String, Default `"#0284c7"`): Màu nhấn chủ đạo hệ thống (tuân thủ `DESIGN.md`).
+    - `bannerUrl` (String, Nullable): Ảnh banner trang chủ / trang giới thiệu khóa học.
+    - `contactEmail` (String, Nullable): Email tiếp nhận liên hệ / hỗ trợ.
+    - `contactPhone` (String, Nullable): Số điện thoại cố định.
+    - `hotline` (String, Nullable): Đường dây nóng tư vấn tuyển sinh.
+    - `address` (Text, Nullable): Địa chỉ trụ sở chính và các chi nhánh cơ sở.
+    - `socialLinks` (JSON, Nullable): Danh sách liên kết mạng xã hội (`facebook`, `youtube`, `zalo`, `tiktok`).
+    - `seoMeta` (JSON, Nullable): Cấu hình SEO mặc định (`metaTitle`, `metaDescription`, `ogImageUrl`, `keywords`).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+37. **`system_audit_logs`** (Nhật ký kiểm toán toàn hệ thống - Giám sát bảo mật & tuân thủ):
+    - `id` (UUID, PK).
+    - `actorId` (UUID, FK -> `users.id`): Người thực hiện hành động.
+    - `actorEmail` (String): Email của người thực hiện tại thời điểm thao tác.
+    - `action` (String): Mã hành động (`USER_CREATE`, `USER_UPDATE_ROLES`, `USER_DEACTIVATE`, `PAYROLL_APPROVE`, `GRADEBOOK_UPDATE`, `WEBSITE_SETTINGS_UPDATE`, `SESSION_RESCHEDULE`).
+    - `resourceType` (String): Loại tài nguyên (`USER`, `ROLE`, `CLASS`, `PAYROLL`, `SETTING`, `SUBMISSION`).
+    - `resourceId` (String): Khóa chính định danh tài nguyên bị tác động.
+    - `diffJson` (JSON, Nullable): Dữ liệu chi tiết trước và sau khi thay đổi (Old/New values).
+    - `ipAddress` (String, Nullable): Địa chỉ IP của client gửi request.
+    - `userAgent` (String, Nullable): Trình duyệt / thiết bị của người dùng.
+    - `createdAt` (Timestamp, Default `now()`).
+
+---
+
 ## 3. Ma Trận Phân Quyền Hạt Nhân RBAC (Granular RBAC Matrix)
 
 | Chức năng / Permission Code | Super Admin | Academic Manager (Giáo vụ) | Class Coordinator (Vận hành/CSKH) | Teacher (Giảng viên) | Examiner (Giám khảo) | Student (Học viên) | Parent (Phụ huynh) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | Quản trị hệ thống, Cấu hình RBAC | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Quản lý Giao diện Website (Logo, Favicon, Màu) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Quản lý Cổng thanh toán & Cấu hình Tích hợp | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Xem Nhật ký Kiểm toán Toàn hệ thống (Audit Logs) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Quản trị Người Dùng Toàn Diện (CRUD, Khóa/Mở) | ✅ | ✅ (xem/lọc) | ❌ | ❌ | ❌ | ❌ | ❌ |
 | CRUD Danh mục môn học (`subjects`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Quản lý Bậc lương & Duyệt bảng lương GV | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Quản lý Mã giảm giá (`discounts`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
