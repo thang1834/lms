@@ -506,8 +506,11 @@ Tối ưu hóa trải nghiệm trực tiếp của giảng viên trong từng gi
   - Giảng viên có thể phát nhanh 1 câu hỏi bình chọn / trắc nghiệm ngắn trong 2 phút để kiểm tra độ hiểu bài ngay tại lớp.
   - Học viên bình chọn trực tiếp trên điện thoại/laptop; hệ thống hiển thị biểu đồ phần trăm kết quả theo thời gian thực (Real-time).
 - **FR-COCKPIT-03 (Bảng Trắng Kỹ Thuật Số Tương Tác - Interactive Digital Whiteboard):**
-  - Tích hợp bảng vẽ kỹ thuật số (Excalidraw/Tldraw) hỗ trợ vẽ sơ đồ kiến trúc, giải thuật luồng dữ liệu, lược đồ ERD.
-  - Tự động lưu và xuất file PDF/PNG sơ đồ bảng vẽ đính kèm vào phần tài liệu buổi học để toàn bộ học viên xem lại sau giờ học.
+  - **Tài liệu tham khảo kỹ thuật:** Chuẩn hóa theo kiến trúc mã nguồn mở của [`excalidraw/excalidraw`](https://github.com/excalidraw/excalidraw) (NPM: `@excalidraw/excalidraw` & `@excalidraw/utils`).
+  - Hỗ trợ giảng viên phác thảo sơ đồ kiến trúc hệ thống, cấu trúc dữ liệu, giải thuật, luồng xử lý và lược đồ CSDL theo phong cách vẽ tay trực quan.
+  - Cơ chế **Autosave 3 giây:** Tự động đồng bộ nét vẽ và lưu trữ cấu trúc Scene JSON (`elements`, `appState`, `files`) vào CSDL PostgreSQL (`class_whiteboards.board_data`).
+  - Hỗ trợ **Real-time Multiplayer:** Đồng bộ con trỏ chuột và nét vẽ tức thời qua WebSocket Hub giữa Giảng viên và Học viên.
+  - Tự động kết xuất file PDF/PNG vector chất lượng cao đính kèm vào phần tài liệu buổi học để toàn bộ học viên xem lại sau giờ học.
 
 ---
 

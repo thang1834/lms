@@ -1317,5 +1317,210 @@ Nhờ áp dụng blueprint `gmhafiz/go8`, toàn bộ các thao tác phát triể
 | `task check` | Chạy kiểm tra tổng hợp: `go fmt` (định dạng), `go vet` (biên dịch), `golangci-lint` và quét lỗ hổng bảo mật `govulncheck`. |
 | `task build` | Đóng gói nhị phân (statically-linked binary) tối ưu cho môi trường Production (Linux/Docker). |
 
+---
+
+## 9. Tài Liệu Tham Chiếu & Hướng Dẫn Tích Hợp Bảng Vẽ Điện Tử Excalidraw (Excalidraw Reference)
+
+> **Tài liệu & Thư viện tham chiếu chính thức:**  
+> - **GitHub Repository:** [`excalidraw/excalidraw`](https://github.com/excalidraw/excalidraw) (Virtual whiteboard for sketching hand-drawn like diagrams - 64k+ Stars)  
+> - **Cổng tài liệu phát triển (Docs):** [`https://docs.excalidraw.com/`](https://docs.excalidraw.com/)  
+> - **NPM Core Package:** [`@excalidraw/excalidraw`](https://www.npmjs.com/package/@excalidraw/excalidraw)  
+> - **NPM Utilities Package:** [`@excalidraw/utils`](https://www.npmjs.com/package/@excalidraw/utils) (Các hàm tiện ích export SVG, PNG, load scene)  
+> - **Phiên bản khuyến nghị:** `@excalidraw/excalidraw@^0.17.x`  
+> - **Mục đích sử dụng:** Cung cấp bảng vẽ phác thảo tay tương tác trực tiếp trên trình duyệt tại **Live Class Cockpit (`/teacher/classes/{id}/live`)** cho giảng viên vẽ sơ đồ kiến trúc, giải thuật, luồng dữ liệu, lược đồ ERD và ghi chú code trong ca học.
+
+```mermaid
+flowchart TD
+    subgraph BrowserClient ["1. Client Layer (Nuxt UI + Excalidraw Container)"]
+        TeacherUI["Nuxt 3 Teacher Live Cockpit (/teacher/classes/:id/live)"]
+        IFrameEmbed["Excalidraw Standalone Container (IFrame / PostMessage Bridge)"]
+        ExcalidrawCore["@excalidraw/excalidraw Component (Canvas & Drawing Engine)"]
+        ExcalidrawUtils["@excalidraw/utils (exportToBlob / exportToSvg)"]
+        
+        TeacherUI <-->|"postMessage (Init, Change, Export)"| IFrameEmbed
+        IFrameEmbed --> ExcalidrawCore
+        IFrameEmbed --> ExcalidrawUtils
+    end
+
+    subgraph GoBackend ["2. Backend Layer (Go 1.23+ & Chi Router)"]
+        CockpitHandler["Cockpit Handler (POST /teacher/cockpit/:id/whiteboard)"]
+        WSHub["WebSocket Collaboration Hub (internal/domain/cockpit/ws_hub.go)"]
+        PDFPkg["PDF Export Engine (pkg/pdf / MinIO S3 Uploader)"]
+        PostgresDB[("PostgreSQL 16 (class_whiteboards: board_data JSON)")]
+        MinIOStore[("Object Storage MinIO/S3 (export_pdf_url)")]
+    end
+
+    TeacherUI -->|"REST API (Debounce 3s Autosave)"| CockpitHandler
+    CockpitHandler --> PostgresDB
+    TeacherUI <-->|"WebSockets (Delta Sync & Live Cursors)"| WSHub
+    ExcalidrawUtils -->|"Upload Exported PNG/PDF"| PDFPkg
+    PDFPkg --> MinIOStore
+    PDFPkg -->|"Update export_pdf_url"| PostgresDB
+```
+
+---
+
+### 9.1 Giải Pháp Kỹ Thuật Tích Hợp Frontend (Nuxt UI / Vue 3)
+
+Excalidraw là thư viện xây dựng trên nền tảng React. Để tích hợp tối ưu và mượt mà nhất vào Frontend **Nuxt UI (Vue 3 / TypeScript)** của LMS, hệ thống áp dụng **Giải pháp IFrame Micro-Frontend Container**:
+
+#### Phương Án Khuyến Nghị (IFrame Standalone Container):
+1. **Kiến trúc:** Tạo một trang nhúng tĩnh độc lập tại `frontend/public/whiteboard/index.html` hoặc submodule client riêng biệt đóng gói React + `@excalidraw/excalidraw`.
+2. **Nhúng vào Nuxt UI:** Component `components/teacher/LiveWhiteboard.vue` chỉ cần nhúng qua thẻ `<iframe src="/whiteboard/index.html" class="w-full h-full border-none"></iframe>`.
+3. **Cơ chế giao tiếp qua `window.postMessage`:**
+   - **Parent (Nuxt UI) $\to$ IFrame:**
+     - `LOAD_SCENE`: Truyền dữ liệu `boardData` (elements, appState, files) lấy từ API backend để khôi phục bảng vẽ của buổi học.
+     - `TRIGGER_EXPORT`: Yêu cầu container xuất bản file PDF/PNG.
+     - `SET_COLLABORATORS`: Cập nhật vị trí con trỏ chuột của các thành viên khác từ WebSocket.
+   - **IFrame $\to$ Parent (Nuxt UI):**
+     - `ON_CHANGE`: Bắn payload dữ liệu khi giảng viên vẽ (được debounce 3s tại parent để gọi API autosave).
+     - `ON_POINTER_UPDATE`: Bắn tọa độ chuột của giảng viên (`{ x, y }`) để parent đẩy qua WebSocket tới học viên.
+     - `ON_EXPORT_RESULT`: Trả về Blob dữ liệu hình ảnh/PDF sau khi render xong.
+4. **Ưu điểm kỹ thuật:**
+   - **Cô lập hoàn toàn (Zero Conflict):** Không xảy ra bất kỳ xung đột nào giữa Virtual DOM của Vue 3 và React DOM.
+   - **Tối ưu Bundle Size:** Không làm phình to gói bundle chính của ứng dụng Nuxt UI.
+   - **Ổn định cao:** Nâng cấp phiên bản `@excalidraw/excalidraw` độc lập mà không ảnh hưởng tới các package Vue.
+
+---
+
+### 9.2 Cấu Trúc Dữ Liệu Lưu Trữ (Scene JSON Schema - Bảng `class_whiteboards`)
+
+Dữ liệu nét vẽ được tuần tự hóa và lưu trữ nguyên vẹn dưới dạng chuỗi JSON trong cột `board_data` (kiểu dữ liệu `TEXT` hoặc `JSONB`) của bảng `class_whiteboards`.
+
+Cấu trúc đối tượng JSON tuân thủ 100% định dạng scene tiêu chuẩn của Excalidraw (Version 2):
+
+```json
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "https://github.com/excalidraw/excalidraw",
+  "elements": [
+    {
+      "id": "elem_rect_worker_pool",
+      "type": "rectangle",
+      "x": 180,
+      "y": 120,
+      "width": 260,
+      "height": 140,
+      "angle": 0,
+      "strokeColor": "#0284c7",
+      "backgroundColor": "#e0f2fe",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "strokeSharpness": "round",
+      "seed": 9182736,
+      "version": 3,
+      "versionNonce": 4829103,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "id": "elem_arrow_01",
+          "type": "arrow"
+        }
+      ],
+      "updated": 1727083200000,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "elem_text_title",
+      "type": "text",
+      "x": 200,
+      "y": 140,
+      "width": 180,
+      "height": 30,
+      "angle": 0,
+      "strokeColor": "#0f172a",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "strokeSharpness": "round",
+      "seed": 1029384,
+      "version": 2,
+      "versionNonce": 7382910,
+      "isDeleted": false,
+      "text": "Go Worker Pool (Goroutines)",
+      "fontSize": 18,
+      "fontFamily": 1,
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "baseline": 22
+    }
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff",
+    "gridSize": 20,
+    "theme": "light",
+    "zoom": {
+      "value": 1.0
+    },
+    "scrollX": 0,
+    "scrollY": 0
+  },
+  "files": {}
+}
+```
+
+---
+
+### 9.3 Cơ Chế Đồng Bộ Trực Tiếp Thời Gian Thực (Multiplayer Collaboration Qua WebSockets)
+
+Để giảng viên và học viên có thể cùng theo dõi nét vẽ và con trỏ chuột trực tiếp trong buổi học trực tuyến:
+
+1. **WebSocket Hub Backend (`internal/domain/cockpit/ws_hub.go`):**
+   - Quản lý các phòng học theo `sessionId`.
+   - Khi client kết nối tới `ws://host/api/v1/teacher/sessions/{sessionId}/whiteboard/ws`, máy chủ gán client vào room tương ứng.
+2. **Cơ chế truyền dữ liệu Delta (Delta Syncing):**
+   - Thay vì truyền toàn bộ mảng `elements` nặng hàng MB sau mỗi nét vẽ, client chỉ truyền danh sách các elements có `versionNonce` hoặc `version` mới hơn so với lần đồng bộ trước.
+   - Nhờ đó, băng thông mạng giảm trên 90%, độ trễ hiển thị dưới 50ms.
+3. **Con trỏ chuột cộng tác (Collaborator Remote Cursors):**
+   - Định kỳ 50ms, client gửi tọa độ chuột `pointer: { x: number, y: number }`.
+   - Hub WebSocket phát tán tới các client khác trong phòng để vẽ con trỏ chuột kèm tên giảng viên/học viên tương ứng.
+
+---
+
+### 9.4 Luồng Xuất Bản PDF & Lưu Trữ Tự Động (PDF Export Pipeline)
+
+Khi buổi học kết thúc hoặc giảng viên bấm nút **[Xuất PDF Lưu Trữ]**:
+
+1. **Client-side Rendering với `@excalidraw/utils`:**
+   ```typescript
+   import { exportToBlob } from "@excalidraw/utils";
+
+   // 1. Kết xuất các elements thành Blob hình ảnh PNG độ phân giải cao
+   const blob = await exportToBlob({
+     elements: excalidrawAPI.getSceneElements(),
+     appState: {
+       ...excalidrawAPI.getAppState(),
+       exportWithDarkMode: false,
+       exportBackground: true,
+     },
+     files: excalidrawAPI.getFiles(),
+     mimeType: "image/png",
+     exportPadding: 30,
+   });
+
+   // 2. Gửi file Blob lên Backend Go qua Multipart Form Data
+   const formData = new FormData();
+   formData.append("file", blob, `session-${sessionId}-whiteboard.png`);
+   formData.append("title", "Sơ đồ kiến trúc bài giảng");
+   await $fetch(`/api/v1/teacher/whiteboards/${whiteboardId}/export-pdf`, {
+     method: "POST",
+     body: formData,
+   });
+   ```
+2. **Backend Processing & MinIO Storage:**
+   - Package `pkg/pdf` đóng gói hình ảnh vector sơ đồ vào định dạng tài liệu PDF tiêu chuẩn, chèn tiêu đề bài học, tên giảng viên và con dấu điện tử của trung tâm.
+   - Lưu file PDF vào MinIO S3 bucket `lms-whiteboards/{sessionId}/{whiteboardId}.pdf`.
+   - Cập nhật trường `export_pdf_url` trong bảng `class_whiteboards` để hiển thị nút **[Tải Sơ Đồ Bài Giảng PDF]** cho học viên ôn tập.
+
 
 

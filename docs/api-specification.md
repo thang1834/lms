@@ -1785,22 +1785,42 @@ func (h *CockpitHandler) CreateQuickPoll(w http.ResponseWriter, r *http.Request)
 }
 ```
 
-#### 17.3 `POST /api/v1/teacher/cockpit/{sessionId}/whiteboard` - Lưu bảng trắng kỹ thuật số
+#### 17.3 `POST /api/v1/teacher/cockpit/{sessionId}/whiteboard` - Lưu bảng trắng kỹ thuật số Excalidraw
 
 ```go
 // SaveWhiteboard godoc
-// @Summary Lưu nét vẽ bảng trắng kỹ thuật số & Xuất PDF
-// @Description Lưu dữ liệu bảng vẽ Excalidraw/Tldraw của buổi học và tự động xuất file đính kèm cho học viên
+// @Summary Lưu nét vẽ bảng trắng kỹ thuật số Excalidraw & Autosave
+// @Description Lưu dữ liệu nét vẽ tuân thủ chuẩn Excalidraw Scene JSON Schema (https://github.com/excalidraw/excalidraw) của buổi học
 // @Tags Teacher Live Cockpit
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param sessionId path string true "Mã định danh buổi học (UUID)"
-// @Param request body dto.SaveWhiteboardRequest true "Dữ liệu nét vẽ và tiêu đề sơ đồ"
+// @Param request body dto.SaveWhiteboardRequest true "Dữ liệu nét vẽ Excalidraw Scene JSON và tiêu đề sơ đồ"
 // @Success 200 {object} response.Envelope{data=dto.WhiteboardResponse} "Lưu bảng trắng thành công"
 // @Router /api/v1/teacher/cockpit/{sessionId}/whiteboard [post]
 func (h *CockpitHandler) SaveWhiteboard(w http.ResponseWriter, r *http.Request) {
 	// Implementation calls usecase.SaveWhiteboard
+}
+```
+
+#### 17.4 `POST /api/v1/teacher/whiteboards/{id}/export-pdf` - Xuất file PDF bảng vẽ đính kèm buổi học
+
+```go
+// ExportWhiteboardPDF godoc
+// @Summary Xuất bảng vẽ Excalidraw ra file PDF chất lượng cao
+// @Description Chuyển đổi sơ đồ nét vẽ Excalidraw (kết xuất từ @excalidraw/utils) thành file PDF, lưu trữ lên MinIO/S3 và đính kèm vào mục tài liệu buổi học
+// @Tags Teacher Live Cockpit
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Mã định danh bảng vẽ (UUID)"
+// @Param file formData file true "File hình ảnh/PDF render từ Excalidraw utils (PNG hoặc PDF)"
+// @Param title formData string false "Tiêu đề tài liệu sơ đồ"
+// @Success 200 {object} response.Envelope{data=dto.WhiteboardExportPDFResponse} "Xuất PDF và đính kèm buổi học thành công"
+// @Router /api/v1/teacher/whiteboards/{id}/export-pdf [post]
+func (h *CockpitHandler) ExportWhiteboardPDF(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.ExportWhiteboardPDF
 }
 ```
 
@@ -2006,14 +2026,26 @@ type PollOptionVoteDTO struct {
 
 type SaveWhiteboardRequest struct {
 	Title     string `json:"title" validate:"required" example:"Sơ đồ kiến trúc Go Worker Pool"`
-	BoardData string `json:"boardData" validate:"required"` // JSON serialization from Excalidraw
+	// BoardData chứa toàn bộ Scene JSON theo chuẩn Excalidraw (https://github.com/excalidraw/excalidraw):
+	// bao gồm: { type: "excalidraw", version: 2, elements: [...], appState: {...}, files: {...} }
+	BoardData string `json:"boardData" validate:"required" example:"{\"type\":\"excalidraw\",\"version\":2,\"elements\":[...],\"appState\":{...}}"`
 }
 
 type WhiteboardResponse struct {
 	WhiteboardID uuid.UUID `json:"whiteboardId"`
+	SessionID    uuid.UUID `json:"sessionId"`
 	Title        string    `json:"title"`
-	ExportPdfURL *string   `json:"exportPdfUrl,omitempty"`
+	ExportPdfURL *string   `json:"exportPdfUrl,omitempty" example:"https://storage.lms.edu.vn/whiteboards/session-01.pdf"`
 	UpdatedAt    time.Time `json:"updatedAt"`
+}
+
+type WhiteboardExportPDFResponse struct {
+	WhiteboardID uuid.UUID `json:"whiteboardId"`
+	SessionID    uuid.UUID `json:"sessionId"`
+	Title        string    `json:"title"`
+	ExportPdfURL string    `json:"exportPdfUrl" example:"https://storage.lms.edu.vn/whiteboards/session-01.pdf"`
+	FileSizeKB   int       `json:"fileSizeKb" example:"320"`
+	GeneratedAt  time.Time `json:"generatedAt"`
 }
 
 type AICodeReviewDraftResponse struct {
