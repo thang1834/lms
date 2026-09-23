@@ -10,7 +10,7 @@
 ## 1. Tổng Quan Kiến Trúc Hệ Thống (System Architecture Overview)
 
 Hệ thống **LMS Center Platform** được thiết kế theo mô hình kiến trúc **Tách biệt Frontend - Backend (Decoupled Clean Architecture)** tối ưu hiệu năng cao:
-- **Frontend Layer:** Xây dựng trên nền tảng **Nuxt 3/4 + Nuxt UI (Vue 3, TypeScript, Tailwind CSS v4, Pinia)** mang lại trải nghiệm tương tác mượt mà, hỗ trợ cả SSR (Server-Side Rendering cho SEO trang công khai) và SPA tốc độ cao cho các cổng Dashboard quản trị.
+- **Frontend Layer:** Xây dựng trên nền tảng **Nuxt 4 + Nuxt UI v4 (Vue 3.5+, TypeScript, Tailwind CSS v4, Reka UI, Pinia)** mang lại trải nghiệm tương tác mượt mà, hỗ trợ cả SSR (Server-Side Rendering cho SEO trang công khai) và SPA tốc độ cao cho các cổng Dashboard quản trị (chi tiết tại [ADR-0006](adr/0006-nuxt-4-and-nuxt-ui-v4-frontend-foundation.md)).
 - **Backend API Layer:** Xây dựng bằng ngôn ngữ **Go (Golang 1.23+)** kế thừa trọn vẹn kiến trúc phân tầng chuyên nghiệp từ blueprint **[`gmhafiz/go8`](https://github.com/gmhafiz/go8)**:
   - **Router:** `go-chi/chi` v5 (tiêu chuẩn cộng đồng Go, 100% tương thích `net/http`).
   - **Mô hình Phân tầng (Layered Architecture):** `Handler` (Controller, DTO validation) $\to$ `UseCase` (Business logic) $\to$ `Repository` (Data access).
@@ -23,7 +23,7 @@ Hệ thống **LMS Center Platform** được thiết kế theo mô hình kiến
 
 ```mermaid
 graph TD
-    subgraph FrontendLayer ["1. Tầng Giao Diện Người Dùng (Nuxt UI + Vue 3)"]
+    subgraph FrontendLayer ["1. Tầng Giao Diện Người Dùng (Nuxt 4 + Nuxt UI v4)"]
         AdminUI["Admin & Academic Manager Portal (/admin)"]
         CoordUI["Class Coordinator / Care Portal (/operations)"]
         TeacherUI["Teacher Portal (/teacher)"]

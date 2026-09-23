@@ -166,7 +166,7 @@ flowchart TD
 
 ---
 
-## 3. Lệnh Chạy Bộ Kiểm Thử Tự Động (Nuxt UI + Go-chi Stack)
+## 3. Lệnh Chạy Bộ Kiểm Thử Tự Động (Nuxt UI v4 + Go-chi Stack)
 
 ```bash
 # 1. Kiểm tra mã nguồn Backend Go (Golang)
@@ -174,7 +174,7 @@ cd backend
 go vet ./...
 go test -v ./... -cover
 
-# 2. Kiểm tra mã nguồn Frontend Nuxt UI (Vue 3 / TypeScript)
+# 2. Kiểm tra mã nguồn Frontend Nuxt 4 + Nuxt UI v4 (TypeScript & Vue 3)
 cd ../frontend
 npm run typecheck
 npm run lint

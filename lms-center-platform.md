@@ -2,7 +2,7 @@
 
 > **File:** `lms-center-platform.md`  
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
-> **Kiến trúc:** Monorepo (Frontend: Nuxt UI + Vue 3 | Backend: `gmhafiz/go8` + Go-chi + PostgreSQL)  
+> **Kiến trúc:** Monorepo (Frontend: Nuxt 4 + Nuxt UI v4 | Backend: `gmhafiz/go8` + Go-chi + PostgreSQL)  
 > **Chế độ:** PLANNING ONLY (No code writing in this phase)  
 > **Phiên bản:** 2.3.0 (Bổ sung Live Shift Board, Student Care CRM, Chuyển Lớp & Bảo Lưu, Sự Cố Phòng Học & Cấp Phát Học Liệu)  
 > **Ngày cập nhật:** 23/09/2026  
@@ -11,7 +11,7 @@
 
 ## 1. Tổng Quan & Mục Tiêu Dự Án (Overview)
 
-Hệ thống LMS được thiết kế riêng cho trung tâm đào tạo hiện đại với trọng tâm là **Công nghệ thông tin (CNTT)**, đồng thời linh hoạt mở rộng hoàn hảo cho **Ngoại ngữ** và các bộ môn khác. Backend được xây dựng theo blueprint **`gmhafiz/go8`** (Go-chi, Layered Architecture, Goose migrations, Taskfile) kết hợp Frontend **Nuxt UI** cho 4 cổng người dùng.
+Hệ thống LMS được thiết kế riêng cho trung tâm đào tạo hiện đại với trọng tâm là **Công nghệ thông tin (CNTT)**, đồng thời linh hoạt mở rộng hoàn hảo cho **Ngoại ngữ** và các bộ môn khác. Backend được xây dựng theo blueprint **`gmhafiz/go8`** (Go-chi, Layered Architecture, Goose migrations, Taskfile) kết hợp Frontend **Nuxt 4 + Nuxt UI v4** cho 4 cổng người dùng.
 
 
 Hệ thống tích hợp toàn diện 19 trụ cột nghiệp vụ:
@@ -578,7 +578,7 @@ task swagger
 task check
 task test
 
-# 6. Kiểm tra mã nguồn Frontend Nuxt UI (Vue 3 / TypeScript)
+# 6. Kiểm tra mã nguồn Frontend Nuxt 4 + Nuxt UI v4 (TypeScript & Vue 3)
 cd ../frontend
 npm run typecheck
 npm run lint

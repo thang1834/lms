@@ -4,7 +4,7 @@
 > Thiết kế chuẩn hóa cho đào tạo **Công nghệ Thông tin (CNTT)** và mở rộng linh hoạt cho **Ngoại ngữ, Thiết kế, Quản trị**.
 
 [![Backend Blueprint](https://img.shields.io/badge/backend-gmhafiz%2Fgo8-00ADD8?style=flat-square&logo=go)](https://github.com/gmhafiz/go8)
-[![Frontend](https://img.shields.io/badge/frontend-Nuxt_UI_v3-00DC82?style=flat-square&logo=nuxtdotjs)](https://nuxt.com)
+[![Frontend](https://img.shields.io/badge/frontend-Nuxt_UI_v4-00DC82?style=flat-square&logo=nuxtdotjs)](https://nuxt.com)
 [![Database](https://img.shields.io/badge/database-PostgreSQL_16-336791?style=flat-square&logo=postgresql)](https://www.postgresql.org)
 [![Observability](https://img.shields.io/badge/observability-OpenTelemetry-F5A800?style=flat-square&logo=opentelemetry)](https://opentelemetry.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -47,7 +47,7 @@ task dev
 # Health check: http://localhost:8080/health
 ```
 
-### 4. Khởi Chạy Frontend (Nuxt UI + Vue 3)
+### 4. Khởi Chạy Frontend (Nuxt 4 + Nuxt UI v4)
 ```bash
 cd ../frontend
 npm install
@@ -134,7 +134,7 @@ cd backend
 go vet ./...
 go test -v -cover ./...
 
-# 2. Kiểm tra Frontend Nuxt UI (TypeScript typecheck & ESLint)
+# 2. Kiểm tra Frontend Nuxt UI v4 (TypeScript typecheck & ESLint)
 cd ../frontend
 npm run typecheck
 npm run lint
