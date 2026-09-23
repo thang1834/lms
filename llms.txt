@@ -1,0 +1,37 @@
+# LMS Center Platform
+> Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức (IT & Đa ngành) xây dựng trên nền tảng Go-chi (blueprint gmhafiz/go8) và Nuxt UI (Vue 3).
+
+## Core Documentation Files
+- [DESIGN.md]: Design Tokens, UI theme, bảng màu (Sky/Ocean Blue & Emerald, cấm màu tím), Monaco Editor, Bảng vẽ Excalidraw, Watchdog banner.
+- [lms-center-platform.md]: Kiến trúc tổng thể 19 trụ cột nghiệp vụ và toàn bộ mã Go domain structs của 59 bảng CSDL.
+- [docs/requirements.md]: Đặc tả yêu cầu phần mềm SRS v1.8.0 gồm 31 phân hệ nghiệp vụ, 46 User Stories chi tiết Acceptance Criteria.
+- [docs/architecture.md]: Thiết kế kiến trúc Clean Go8 v2.4.0, Mermaid ERD 59 bảng, 19 Goose Migrations, Ma trận RBAC 8 vai trò, Excalidraw integration reference.
+- [docs/api-specification.md]: Đặc tả 105+ REST API Handlers, 100% Swagger/OpenAPI annotations, Go DTO Request & Response structs.
+- [docs/implementation-plan.md]: Kế hoạch triển khai kỹ thuật v2.3.0, 24 Go domains, hạ tầng OpenTelemetry Observability (Prometheus, Jaeger, Loki, Grafana), roadmap 8 pha.
+- [docs/user-flows.md]: 20 sơ đồ tuần tự tương tác (Mermaid Sequence Diagrams) và 6 Wireframes màn hình chính.
+- [docs/test-plan.md]: Kế hoạch QA & Ma trận 11 nhóm Test Cases (45+ kịch bản kiểm thử P0/P1).
+- [docs/adr/]: Hồ sơ các quyết định kiến trúc quan trọng (ADRs 0001 - 0005).
+
+## Key Architectural Principles & Conventions
+1. **Clean Layered Architecture (gmhafiz/go8):**
+   - Phân tầng nghiêm ngặt: `Handler (HTTP/REST)` -> `UseCase (Nghiệp vụ cốt lõi)` -> `Repository (Truy vấn CSDL)`.
+   - Chuẩn hóa cấu trúc phản hồi `Envelope`: `{ "data": ..., "meta": ..., "error": ... }`.
+2. **Database Schema & Auditing:**
+   - 100% bảng (59 bảng) bắt buộc có 6 audit fields: `created_at`, `created_by`, `updated_at`, `updated_by`, `deleted_at`, `deleted_by`.
+   - Soft delete mặc định qua trường `deleted_at IS NULL`.
+3. **Dynamic RBAC (8 Vai trò):**
+   - Quản lý qua 4 bảng hạt nhân: `roles`, `permissions`, `role_permissions`, `user_roles`.
+   - 8 Vai trò: `SUPER_ADMIN`, `ACADEMIC_MANAGER`, `CLASS_COORDINATOR`, `TEACHER`, `TA`, `EXAMINER`, `STUDENT`, `PARENT`.
+4. **Teacher Cockpit & Digital Whiteboard:**
+   - Bảng vẽ Excalidraw tích hợp qua Standalone IFrame (`frontend/public/whiteboard/index.html`) giao tiếp qua `window.postMessage`.
+   - Schema dữ liệu Scene JSON (`elements`, `appState`, `files`) lưu tại `class_whiteboards.board_data`.
+   - Multiplayer WebSocket Hub đồng bộ nét vẽ delta và xuất PDF tự động đính kèm buổi học.
+5. **Class Coordinator Shift & Student Retention CRM:**
+   - Điều hành ca học `/coordinator/today` kèm Check-in Watchdog cảnh báo đỏ khi GV/TA trễ sau 10p.
+   - 1-Click Class Broadcast phát thông báo khẩn qua Zalo OA/Push/SMS.
+   - Sổ nhật ký chăm sóc học viên (`student_care_logs`), tích hợp Churn Radar can thiệp học sinh vắng 2 buổi hoặc nợ bài.
+   - Quy trình chuyển lớp & bảo lưu khóa học 2 cấp (`class_transfers`), tự động tính học phí bảo lưu (`reservedCredit`).
+   - Quản lý sự cố phòng học (`session_incidents`) và cấp phát học liệu (`student_materials`).
+6. **OpenTelemetry Full Observability:**
+   - Tracing qua Jaeger (`/v1/traces`), Metrics qua Prometheus (`/v1/metrics`), Logs qua Loki/Grafana.
+   - Go-chi Middleware tự động bắt trace context và inject `trace_id`, `span_id` vào structured logs.

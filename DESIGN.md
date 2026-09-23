@@ -164,6 +164,38 @@ Hệ thống sử dụng bố cục chuẩn **App Shell**:
   - `[ Vắng mặt ]` (Đỏ)
 - Kèm theo ô nhập ghi chú cá nhân (ví dụ: "xin phép về sớm 15p").
 
+### 5.5 Khoang Lái Lớp Học Trực Tuyến & Bảng Vẽ Excalidraw (Live Cockpit & Digital Whiteboard)
+- **Vị trí:** Màn hình `/teacher/classes/{id}/live`.
+- **Quy chuẩn:**
+  - Nút Primary CTA: `[ Bắt đầu lớp học ]` màu `#0284c7` (kích thước lớn, kèm icon Video Camera) tự động mở Meet/Zoom trong tab mới và check-in GV.
+  - Bảng vẽ Excalidraw nhúng qua IFrame container độc lập (`/whiteboard/index.html`), viền bo `12px`, chiều cao cố định `600px` (hoặc Fullscreen).
+  - Thanh trạng thái kết nối WebSocket Hub: Hiển thị chấm xanh `● Đã kết nối (5 học viên đang vẽ)` hoặc đỏ khi mất kết nối.
+  - Nút `[ Xuất PDF bài học ]` màu `#10b981` xuất bản file và đính kèm vào bài giảng.
+
+### 5.6 Bảng Điều Hành Ca Học Hôm Nay & Watchdog Cảnh Báo Đỏ (Live Shift Board & Watchdog Banner)
+- **Vị trí:** Màn hình `/coordinator/today`.
+- **Quy chuẩn:**
+  - Bộ lọc cơ sở chi nhánh trên Topbar: Tabs chuyển nhanh giữa CS Cầu Giấy, CS Hà Đông, Online.
+  - Thẻ ca học: Phân loại thẻ bằng viền màu: Xanh dương (`Đang diễn ra`), Xanh lá (`Đã kết thúc`), Xám (`Chưa bắt đầu`).
+  - **Check-in Watchdog Banner:** Khi ca học đã bắt đầu 10 phút mà GV chưa check-in:
+    - Banner nền đỏ đậm nhấp nháy (`bg-rose-950 border border-rose-500 text-rose-200`).
+    - Hiển thị văn bản: `🚨 CẢNH BÁO: Ca học đã bắt đầu 12 phút nhưng GV Nguyễn Văn A chưa check-in! [Gọi ngay: 0912.xxx.xxx]`.
+    - Nút `[ 📢 Phát Loa Thông Báo Khẩn ]` gửi tin khẩn đến toàn bộ học sinh trong 1 click.
+
+### 5.7 Sổ Chăm Sóc Học Viên CRM (Student Retention & Care Log Drawer)
+- **Vị trí:** Màn hình `/coordinator/students/{id}` hoặc Slideover Drawer mở từ Churn Radar.
+- **Quy chuẩn:**
+  - Huy hiệu mức độ nguy cơ: Đỏ rực (`HIGH RISK - Vắng 2 buổi liên tiếp`), Vàng (`MEDIUM RISK - Nợ 3 bài tập`).
+  - Dòng thời gian chăm sóc (Timeline view): Hiển thị tuần tự các mốc liên hệ (Gọi điện, Nhắn tin Zalo, Trao đổi trực tiếp) kèm người liên hệ, nội dung trao đổi và ngày hẹn kế tiếp (`nextFollowUpAt`).
+  - Nút hành động nhanh: `[ Xếp Lịch Học Bù ]`, `[ Đề Xuất Bảo Lưu / Chuyển Lớp ]`, `[ Giao TA Kèm 1-1 ]`.
+
+### 5.8 Trình Ghi Âm Giọng Nói Nhận Xét (Voice Note Recorder Component)
+- **Vị trí:** Giao diện chấm bài tập Monaco Editor của Giáo viên & Màn hình xem bài nộp của Học viên.
+- **Quy chuẩn:**
+  - Nút Micro màu đỏ khi đang ghi âm (`animate-pulse`), đồng hồ đếm giây giới hạn thời gian (tối đa 2 phút).
+  - Trình phát sóng âm thanh (Audio Waveform Visualizer) hiển thị biên độ giọng nói, nút Play/Pause và thanh tiến độ mượt mà.
+  - Hỗ trợ học viên nghe lại với các tốc độ `1.0x`, `1.25x`, `1.5x`.
+
 ---
 
 ## 6. Nguyên Tắc Trải Nghiệm (Do's & Don'ts)
