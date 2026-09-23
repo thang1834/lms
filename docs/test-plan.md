@@ -86,25 +86,28 @@ flowchart TD
 
 ---
 
-## 3. Lệnh Chạy Bộ Kiểm Thử Tự Động (Automation Execution Commands)
+## 3. Lệnh Chạy Bộ Kiểm Thử Tự Động (Nuxt UI + Go-chi Stack)
 
 ```bash
-# 1. Kiểm tra tính hợp lệ của Prisma Schema
-npx prisma validate
+# 1. Kiểm tra mã nguồn Backend Go (Golang)
+cd backend
+go vet ./...
+go test -v ./... -cover
 
-# 2. Kiểm tra TypeScript Types & Linter
+# 2. Kiểm tra mã nguồn Frontend Nuxt UI (Vue 3 / TypeScript)
+cd ../frontend
+npm run typecheck
 npm run lint
-npx tsc --noEmit
 
-# 3. Chạy Unit & Integration Tests (Vitest / Jest)
-npm run test
-
-# 4. Quét bảo mật toàn diện bằng công cụ AG Kit
+# 3. Quét bảo mật toàn diện bằng công cụ AG Kit
+cd ..
 python .agents/skills/vulnerability-scanner/scripts/security_scan.py .
 
-# 5. Kiểm tra cấu trúc Toolkit
+# 4. Kiểm tra cấu trúc Toolkit
 python .agents/scripts/validate_kit.py
 
-# 6. Kiểm thử giao diện E2E (Playwright - khi server dev chạy)
+# 5. Kiểm thử giao diện E2E (Playwright)
+cd frontend
 npx playwright test
 ```
+

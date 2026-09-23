@@ -153,18 +153,23 @@ model TeacherEvaluation {
 
 ---
 
-## 4. Kế Hoạch Triển Khai & Kiểm Thử
+## 4. Kế Hoạch Triển Khai & Kiểm Thử (Nuxt UI + Go-chi Stack)
 
-Toàn bộ các tác vụ sẽ được phân rã theo đúng chuẩn RBAC, tích hợp giao diện xếp lịch trực quan, cổng vận hành lớp và hệ thống đánh giá giáo viên.
+Toàn bộ các tác vụ sẽ được phân rã theo cấu trúc Monorepo (`frontend/` và `backend/`), tích hợp giao diện xếp lịch trực quan, cổng vận hành lớp và hệ thống đánh giá giáo viên.
 
 ```bash
-# Kiểm tra tính toàn vẹn CSDL
-npx prisma validate
+# 1. Kiểm tra mã nguồn Backend Go-chi
+cd backend
+go vet ./...
+go test -v ./...
 
-# Kiểm tra Linter & Type Safety
+# 2. Kiểm tra mã nguồn Frontend Nuxt UI
+cd ../frontend
+npm run typecheck
 npm run lint
-npx tsc --noEmit
 
-# Kiểm tra tính toàn vẹn AG Kit
+# 3. Kiểm tra tính toàn vẹn AG Kit
+cd ..
 python .agents/scripts/validate_kit.py
 ```
+

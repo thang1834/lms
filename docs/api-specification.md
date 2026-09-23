@@ -1,16 +1,16 @@
-# Đặc Tả Giao Diện Lập Trình Ứng Dụng (API & Server Action Specification)
+# Đặc Tả Giao Diện Lập Trình Ứng Dụng (Go-chi REST API Specification)
 
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
 > **Tài liệu:** `docs/api-specification.md`  
-> **Phiên bản:** 1.0.0  
+> **Phiên bản:** 2.0.0 (Chuẩn hóa Go-chi RESTful API & Nuxt UI Client)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
 
-## 1. Quy Chuẩn Thiết Kế API (API Design Conventions)
+## 1. Quy Chuẩn Thiết Kế API (Go-chi RESTful Conventions)
 
-Toàn bộ các giao tiếp dữ liệu giữa Client và Server trong hệ thống tuân thủ nghiêm ngặt các nguyên tắc:
-- **Chuẩn hóa phản hồi (Response Envelope):**
+Toàn bộ các giao tiếp dữ liệu giữa Client (Nuxt UI) và Server (Go-chi) trong hệ thống tuân thủ nghiêm ngặt các nguyên tắc:
+- **Chuẩn hóa phản hồi (JSON Response Envelope):**
   - **Thành công (200, 201):**
     ```json
     {
@@ -30,12 +30,23 @@ Toàn bộ các giao tiếp dữ liệu giữa Client và Server trong hệ th�
       }
     }
     ```
-- **Xác thực dữ liệu (Input Validation):** 100% dữ liệu đầu vào được kiểm tra bằng **Zod Schema** trước khi xử lý nghiệp vụ.
-- **Bảo mật:** Mọi request được gắn context người dùng từ phiên đăng nhập NextAuth JWT session.
+- **Xác thực dữ liệu (Input Validation):** 
+  - Phía **Go Backend**: Xác thực dữ liệu đầu vào bằng Go Struct Tags (`validate:"required,email"`, thư viện `go-playground/validator/v10`) trước khi xử lý tầng Service.
+  - Phía **Nuxt UI Client**: Xác thực form tức thời bằng Zod Schema tích hợp cùng component `<UForm>` của Nuxt UI.
+- **Bảo mật & Session:** Mọi request được gắn context người dùng từ Bearer JWT token qua `JWTMiddleware` và phân quyền qua `RBACMiddleware` của Go-chi.
 
 ---
 
-## 2. Danh Mục Các API & Server Actions Chi Tiết
+## 2. Danh Mục Các API Chi Tiết (Chi Router Groups)
+
+```go
+// Chi Router Definition (internal/api/router.go)
+r.Route("/api", func(r chi.Router) {
+    r.Use(middleware.Logger, middleware.Recoverer, middleware.CORS)
+    // Public routes (Auth, VietQR verification)
+    // Protected routes (JWT & RBAC Middleware)
+})
+```
 
 ### 2.1 Nhóm Quản Lý Giáo Viên & Lịch Dạy (Teachers & Schedule)
 

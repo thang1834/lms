@@ -2,67 +2,85 @@
 
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
 > **Tài liệu:** `docs/architecture.md`  
-> **Phiên bản:** 1.2.0 (Cập nhật Chuẩn RBAC, Vận Hành Lớp, Lịch Học Linh Hoạt & Tính Năng Moodle)  
+> **Phiên bản:** 2.0.0 (Chuyển đổi Tech Stack: Nuxt UI + Go-chi REST API Backend)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
 
 ## 1. Tổng Quan Kiến Trúc Hệ Thống (System Architecture Overview)
 
-Hệ thống **LMS Center Platform** được thiết kế theo mô hình kiến trúc **Full-Stack Monolith phân tầng (Layered Architecture)** trên nền tảng **Next.js 16 App Router** và **React 19**, kết hợp cơ chế phân quyền hạt nhân **RBAC chuẩn quốc tế (Role-Based Access Control)**.
+Hệ thống **LMS Center Platform** được thiết kế theo mô hình kiến trúc **Tách biệt Frontend - Backend (Decoupled Architecture)** tối ưu hiệu năng cao:
+- **Frontend Layer:** Xây dựng trên nền tảng **Nuxt 3/4 + Nuxt UI (Vue 3, TypeScript, Tailwind CSS v4, Pinia)** mang lại trải nghiệm tương tác mượt mà, hỗ trợ cả SSR (Server-Side Rendering cho SEO trang công khai) và SPA tốc độ cao cho các cổng Dashboard quản trị.
+- **Backend API Layer:** Xây dựng bằng ngôn ngữ **Go (Golang 1.23+)** với Router **`go-chi/chi` v5** nổi tiếng về tốc độ xử lý siêu nhanh (hàng trăm nghìn request/giây), footprint bộ nhớ RAM cực thấp và khả năng xử lý concurrency tuyệt vời qua **Go Goroutines** cho các tác vụ Cron điểm danh và bắn tin nhắn tự động.
+- **Database Layer:** **PostgreSQL 16** kết hợp **GORM** (Go Object Relational Mapping) đảm bảo toàn vẹn dữ liệu, giao dịch ACID tin cậy và tốc độ truy vấn tối ưu.
 
 ```mermaid
 graph TD
-    subgraph ClientLayer ["1. Tầng Trình Diễn (Presentation Layer)"]
+    subgraph FrontendLayer ["1. Tầng Giao Diện Người Dùng (Nuxt UI + Vue 3)"]
         AdminUI["Admin & Academic Manager Portal (/admin)"]
         CoordUI["Class Coordinator / Care Portal (/operations)"]
         TeacherUI["Teacher Portal (/teacher)"]
         StudentUI["Student Portal (/student)"]
         ParentUI["Parent Portal (/parent)"]
-        Monaco["Monaco Code Editor"]
-        RestrictedPlayer["Restricted Video Player (Anti-Seeking Engine)"]
-        QRCard["VietQR Component"]
+        Monaco["Monaco Editor (Vue Component)"]
+        RestrictedPlayer["Restricted Video Player (Anti-Seeking Component)"]
+        QRCard["VietQR Display Component"]
     end
 
-    subgraph SecurityLayer ["2. Tầng Bảo Mật & RBAC (Security & Dynamic RBAC)"]
-        Middleware["Next.js Edge Middleware (src/middleware.ts)"]
-        RBACEngine["Dynamic RBAC Engine (Roles & Permissions)"]
-        JWT["NextAuth.js v5 JWT Session"]
+    subgraph GoChiBackend ["2. Tầng Backend Hiệu Năng Cao (Go 1.23 + go-chi/chi v5)"]
+        subgraph Middlewares ["Chi Middleware Stack"]
+            Logger["chi/middleware.Logger & Recoverer"]
+            CORS["cors.Handler (Allowed Origins)"]
+            JWTAuth["JWT Authentication Middleware"]
+            RBACAuth["Dynamic RBAC Permission Guard"]
+        end
+
+        subgraph CoreAPIs ["Chi REST Handlers (internal/api/handlers)"]
+            AuthH["Auth & User Handlers"]
+            ClassH["Class & Schedule Handlers"]
+            AttendanceH["Attendance & Timesheet Handlers"]
+            AssignmentH["Assignment & Monaco Grading Handlers"]
+            CourseH["Course, Video & Heartbeat Handlers"]
+            PaymentH["Payment & VietQR Handlers"]
+            FeedbackH["Evaluation & Feedback Handlers"]
+        end
+
+        subgraph GoWorkers ["Goroutine Workers & Cron (internal/worker)"]
+            AttendanceAlertWorker["Attendance Alert Worker (sau 15p)"]
+            ReminderWorker["Class Reminder Worker (24h & 2h)"]
+            MessageDispatcher["Async Message Dispatcher Pool (Zalo/SMS/Email)"]
+        end
+
+        subgraph ServicesRepos ["Service & Repository Layer (internal/service & repository)"]
+            DomainServices["Business Domain Services"]
+            GORMClient["GORM ORM Client"]
+        end
     end
 
-    subgraph ApplicationLayer ["3. Tầng Nghiệp Vụ (Application & Domain Layer)"]
-        ServerActions["React 19 Server Actions (Mutations)"]
-        RouteHandlers["Next.js Route Handlers (REST APIs)"]
-        ZodValidator["Zod Schema Validation Engine"]
-        SchedulerService["Flexible Scheduler Engine (Recurrence & Reschedule)"]
-        NotificationEngine["Automated Notification Engine (Triggers & Scheduled Jobs)"]
-        VideoSecurityEngine["Anti-Cheat Video Progress & Heartbeat Validator"]
-        Services["Domain Services: Attendance, Grading, Payment, Evaluation"]
+    subgraph DataLayer ["3. Tầng Dữ Liệu (Data Layer)"]
+        Postgres[(PostgreSQL 16 Database)]
     end
 
-    subgraph DataLayer ["4. Tầng Dữ Liệu (Data Access Layer)"]
-        Prisma["Prisma ORM Client"]
-        Postgres[(PostgreSQL Database)]
-    end
-
-    subgraph ExternalServices ["5. Dịch Vụ Tích Hợp Thứ Ba (Third-Party Services)"]
+    subgraph ExternalServices ["4. Dịch Vụ Bên Ngoài (External Gateways)"]
         YouTube["YouTube IFrame API"]
-        MessagingGateways["Messaging Gateways (Zalo ZNS / SMS / Web Push / Email)"]
+        ZaloZNS["Zalo ZNS / SMS Gateway"]
         VietQR["Napas247 VietQR Generator"]
-        Storage["Cloud Storage (Cloudinary/S3)"]
-        PDFGen["@react-pdf/renderer (Biên lai / Chứng chỉ)"]
+        Storage["Cloud Storage (S3 / Cloudinary)"]
+        PDFEngine["Go PDF Invoice & Certificate Generator"]
     end
 
-    ClientLayer --> Middleware
-    Middleware --> SecurityLayer
-    SecurityLayer --> ApplicationLayer
-    ApplicationLayer --> DataLayer
-    DataLayer --> Postgres
-    ApplicationLayer --> ExternalServices
-    ClientLayer -.-> YouTube
-    RestrictedPlayer -.-> VideoSecurityEngine
-    NotificationEngine -.-> MessagingGateways
+    FrontendLayer --> Middlewares
+    Middlewares --> CoreAPIs
+    CoreAPIs --> DomainServices
+    DomainServices --> GORMClient
+    GORMClient --> Postgres
+    GoWorkers --> DomainServices
+    GoWorkers --> ExternalServices
+    DomainServices --> ExternalServices
+    FrontendLayer -.-> YouTube
+    RestrictedPlayer -.-> CourseH
 ```
+
 
 ---
 
@@ -533,7 +551,7 @@ sequenceDiagram
     autonumber
     participant Cron as Cron Task / Scheduler
     participant Engine as NotificationEngineService
-    participant DB as PostgreSQL (Prisma)
+    participant DB as PostgreSQL (GORM)
     participant Gateway as Zalo ZNS / SMS Gateway
     participant Recipient as Parent / Teacher / Coordinator
 
@@ -568,8 +586,8 @@ sequenceDiagram
 
 Nhằm bảo đảm học viên của các khóa học tự học (Self-Paced) xem trọn vẹn bài giảng video nhúng YouTube:
 
-1. **Client-Side Player Shield:**
-   - Trình phát sử dụng YouTube IFrame API bọc trong component bảo vệ React.
+1. **Client-Side Player Shield (Nuxt / Vue 3 Component):**
+   - Trình phát sử dụng YouTube IFrame API bọc trong component bảo vệ Vue 3 (`components/course/RestrictedVideoPlayer.vue`).
    - Ẩn điều khiển tua mặc định của YouTube hoặc chặn sự kiện `seekTo`:
      - Nếu vị trí người dùng tua tới $> \text{maxWatchedSeconds} + 2\text{s}$, player ngay lập tức ép `seekTo(maxWatchedSeconds)`.
      - Cho phép tua lùi thoải mái ($\le \text{maxWatchedSeconds}$) để nghe lại bài giảng.
@@ -583,11 +601,73 @@ Nhằm bảo đảm học viên của các khóa học tự học (Self-Paced) x
        "clientTimestamp": 1727072400
      }
      ```
-   - **Xác thực phía Server (Backend Verification):**
+   - **Xác thực phía Server (Go Backend Verification):**
      - $\Delta T_{\text{client}} = \text{currentSeconds} - \text{lastCurrentSeconds}$.
      - $\Delta T_{\text{server}} = \text{now}() - \text{lastHeartbeatAt}$.
      - Nếu $\Delta T_{\text{client}} > \Delta T_{\text{server}} \times \text{playbackRate} + 3\text{s}$ (phát hiện tua lách luật qua DevTools/Script) $\to$ Server từ chối cập nhật `maxWatchedSeconds` và trả mã cảnh báo `400 Bad Request`.
 3. **Mở khóa sau khi hoàn thành (Post-Completion Unlock):**
    - Khi `maxWatchedSeconds >= totalDuration * 0.95`, hệ thống cập nhật `isCompleted = true` và `allowFreeSeeking = true`.
    - Các lần xem tiếp theo, học sinh được tự do tua nhanh/chậm phục vụ việc tra cứu và ôn tập.
+
+---
+
+## 7. Cấu Trúc Mã Nguồn Dự Án (Nuxt UI + Go-chi Monorepo Layout)
+
+Dự án được tổ chức theo cấu trúc monorepo phân tách rõ ràng:
+
+```text
+LMS/
+├── backend/                             # Golang REST API Server (go-chi/chi v5)
+│   ├── cmd/
+│   │   └── server/
+│   │       └── main.go                  # Điểm khởi chạy ứng dụng Go
+│   ├── internal/
+│   │   ├── api/
+│   │   │   ├── handlers/                # HTTP Handlers (Auth, Class, Attendance, etc.)
+│   │   │   ├── middleware/              # Chi Middlewares (JWT, RBAC, Logger, CORS)
+│   │   │   └── router.go                # Chi Router configuration & route groups
+│   │   ├── config/                      # Cấu hình môi trường (Viper / env)
+│   │   ├── models/                      # Go Structs & GORM database models (31 tables)
+│   │   ├── repository/                  # Database queries (GORM data access layer)
+│   │   ├── service/                     # Nghiệp vụ core (Attendance, Billing, Grading)
+│   │   └── worker/                      # Cron Jobs (robfig/cron) & Goroutine Message Dispatcher
+│   ├── pkg/
+│   │   ├── response/                    # Standard JSON response helpers
+│   │   ├── vietqr/                      # Thư viện sinh mã VietQR Napas247
+│   │   └── pdf/                         # Generator biên lai thu tiền & chứng chỉ
+│   ├── go.mod
+│   └── go.sum
+│
+├── frontend/                            # Nuxt UI Application (Vue 3 + Tailwind CSS v4)
+│   ├── assets/                          # CSS tokens, static styles
+│   ├── components/                      # Reusable Nuxt UI components
+│   │   ├── common/                      # Navigation, Modal, Toast, VietQR Card
+│   │   ├── course/                      # RestrictedVideoPlayer.vue, TimestampedQA.vue
+│   │   ├── editor/                      # MonacoCodeEditor.vue
+│   │   └── portals/                     # Admin, Coordinator, Teacher, Student components
+│   ├── composables/                     # Vue 3 Composables (useAuth, useApi, useAttendance)
+│   ├── layouts/                         # default.vue, admin.vue, portal.vue
+│   ├── pages/                           # File-based routing
+│   │   ├── index.vue                    # Landing page giới thiệu trung tâm
+│   │   ├── login.vue                    # Đăng nhập hệ thống
+│   │   ├── admin/                       # /admin - Cổng Giáo vụ & Quản lý đào tạo
+│   │   ├── operations/                  # /operations - Cổng Chuyên viên Vận hành lớp (CSKH)
+│   │   ├── teacher/                     # /teacher - Cổng Giảng viên & Điểm danh
+│   │   ├── student/                     # /student - Cổng Học viên, Monaco Editor, Video
+│   │   └── parent/                      # /parent - Cổng Phụ huynh, chuyên cần, VietQR
+│   ├── stores/                          # Pinia Stores (auth.ts, class.ts, cart.ts)
+│   ├── nuxt.config.ts                   # Cấu hình Nuxt UI, Tailwind, API proxy
+│   ├── package.json
+│   └── tsconfig.json
+│
+├── docs/                                # Toàn bộ bộ tài liệu kỹ thuật & kiến trúc
+│   ├── requirements.md
+│   ├── architecture.md
+│   ├── api-specification.md
+│   ├── user-flows.md
+│   └── test-plan.md
+├── DESIGN.md                            # Quy chuẩn Design Tokens & Typography
+└── .gitignore
+```
+
 
