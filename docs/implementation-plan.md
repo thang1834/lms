@@ -4,7 +4,7 @@
 > **Tài liệu:** `docs/implementation-plan.md`  
 > **Kiến trúc Blueprint:** [`gmhafiz/go8`](https://github.com/gmhafiz/go8) (Go 1.23+, `go-chi/chi/v5`, PostgreSQL 16, Goose SQL Migrations, `swaggo/swag`, `go-playground/validator/v10`)  
 > **Tài liệu tham chiếu:** [`docs/architecture.md`](file:///c:/Users/ducth/OneDrive/M%C3%A1y%20t%C3%ADnh/LMS/docs/architecture.md), [`docs/api-specification.md`](file:///c:/Users/ducth/OneDrive/M%C3%A1y%20t%C3%ADnh/LMS/docs/api-specification.md), [`docs/requirements.md`](file:///c:/Users/ducth/OneDrive/M%C3%A1y%20t%C3%ADnh/LMS/docs/requirements.md)  
-> **Phiên bản kế hoạch:** 2.0.0 (Bổ sung OpenTelemetry Observability Stack & Phân hệ Quản trị SUPER_ADMIN)  
+> **Phiên bản kế hoạch:** 2.1.0 (Bổ sung Multi-Campus, Make-up Scheduling, Auto-Quiz Bank, Student Churn Radar & Training Contracts - Tổng cộng 75+ REST API)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
@@ -28,14 +28,14 @@ Hệ sinh thái Backend được xây dựng tuân thủ nghiêm ngặt mô hìn
   ```
 - **Chuẩn hóa 6 trường Audit & Xóa mềm (Universal Audit & Soft Delete):**
   - 100% bảng trong CSDL đều có 6 trường: `created_at`, `created_by`, `updated_at`, `updated_by`, `deleted_at`, `deleted_by`.
-  - Cấm Tuyệt Đối Hard Delete trên các bảng nghiệp vụ lõi (`users`, `subjects`, `courses`, `classes`, `assignments`, `tuition_invoices`, `teacher_payrolls`). Mọi thao tác xóa đều cập nhật `deleted_at = NOW()` và các câu lệnh query mặc định lọc `WHERE deleted_at IS NULL`.
+  - Cấm Tuyệt Đối Hard Delete trên các bảng nghiệp vụ lõi (`users`, `subjects`, `courses`, `classes`, `assignments`, `tuition_invoices`, `teacher_payrolls`, `campuses`, `rooms`, `quizzes`, `contracts`). Mọi thao tác xóa đều cập nhật `deleted_at = NOW()` và các câu lệnh query mặc định lọc `WHERE deleted_at IS NULL`.
 - **Tự động sinh tài liệu Swagger UI:** 100% các Handler functions phải có đầy đủ Swaggo annotations (`@Summary`, `@Description`, `@Tags`, `@Accept`, `@Produce`, `@Param`, `@Success`, `@Failure`, `@Router`) để tự động sinh Swagger UI qua lệnh `task swagger`.
 
 ---
 
-## 2. 📋 Danh Sách Toàn Bộ 55+ REST API Dự Tính (Chi Tiết 14 Domains)
+## 2. 📋 Danh Sách Toàn Bộ 75+ REST API Dự Tính (Chi Tiết 19 Domains)
 
-Dưới đây là danh sách phân rã toàn bộ 55+ endpoint API dự tính xây dựng, chia theo 14 phân hệ nghiệp vụ:
+Dưới đây là danh sách phân rã toàn bộ 75+ endpoint API dự tính xây dựng, chia theo 19 phân hệ nghiệp vụ:
 
 ### Phân Hệ 1: Xác Thực & Quản Lý Người Dùng (`internal/domain/auth` & `user`)
 | Method | Endpoint | Mô tả chức năng | Quyền hạn |
@@ -176,6 +176,55 @@ Dưới đây là danh sách phân rã toàn bộ 55+ endpoint API dự tính x�
 | `POST` | `/api/v1/classes/{classId}/certificates/issue` | Cấp chứng chỉ số tốt nghiệp cho học viên hoàn thành | Admin / Academic |
 | `GET` | `/api/v1/verify/{certificateCode}` | Xác thực chứng chỉ công khai (không cần login) | Public |
 | `GET` | `/api/v1/students/my-certificates` | Danh sách chứng chỉ của học viên hiện tại | Student |
+
+### Phân Hệ 15: Quản Lý Cơ Sở, Phòng Học & Chống Trùng Lịch (`internal/domain/campus`)
+| Method | Endpoint | Mô tả chức năng | Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/campuses` | Danh sách chi nhánh cơ sở đào tạo đang hoạt động | Public / Auth |
+| `POST` | `/api/v1/campuses` | Tạo cơ sở đào tạo mới (địa chỉ, hotline, email) | Super Admin |
+| `PUT` | `/api/v1/campuses/{id}` | Cập nhật thông tin chi nhánh cơ sở | Super Admin / Academic |
+| `DELETE` | `/api/v1/campuses/{id}` | Xóa mềm chi nhánh cơ sở | Super Admin |
+| `GET` | `/api/v1/campuses/{id}/rooms` | Danh sách phòng học của cơ sở kèm sức chứa và tiện ích | Auth |
+| `POST` | `/api/v1/rooms` | Thêm phòng học mới (Lab PC, Lý thuyết, Hội trường) | Admin / Academic |
+| `PUT` | `/api/v1/rooms/{id}` | Cập nhật cấu hình phòng học và sức chứa | Admin / Academic |
+| `GET` | `/api/v1/rooms/conflicts` | Kiểm tra xung đột phòng học (Room Conflict Guard) | Admin / Academic / Coord |
+
+### Phân Hệ 16: Lên Lịch Dạy Bù & Học Bù Cho Học Sinh Vắng (`internal/domain/makeup`)
+| Method | Endpoint | Mô tả chức năng | Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/makeup-sessions` | Danh sách các ca học bù (lọc theo học sinh, lớp, trạng thái) | Coord / Admin / Teacher |
+| `POST` | `/api/v1/makeup-sessions` | Lên lịch học bù cho học sinh vắng (Ghép lớp song song / Kèm 1-1) | Coord / Academic |
+| `GET` | `/api/v1/classes/parallel-topics` | Tìm các lớp song song cùng dạy bài giảng học sinh đã vắng | Coord / Academic |
+| `PUT` | `/api/v1/makeup-sessions/{id}/attend` | Điểm danh ca học bù & tự động đồng bộ chuyên cần buổi gốc | Teacher / TA / Coord |
+| `PUT` | `/api/v1/makeup-sessions/{id}/cancel` | Hủy hoặc đổi lịch ca học bù | Coord / Academic |
+
+### Phân Hệ 17: Khảo Thí & Ngân Hàng Câu Hỏi Tự Động (`internal/domain/quiz`)
+| Method | Endpoint | Mô tả chức năng | Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/question-banks` | Danh sách ngân hàng câu hỏi theo môn học | Admin / Academic / Teacher |
+| `POST` | `/api/v1/question-banks` | Tạo ngân hàng câu hỏi mới | Admin / Academic |
+| `POST` | `/api/v1/question-banks/{id}/questions` | Thêm câu hỏi trắc nghiệm (Single/Multi/TF/ShortAnswer) | Admin / Teacher |
+| `POST` | `/api/v1/quizzes/generate` | Tự động rút ngẫu nhiên câu hỏi theo cấp độ (Dễ/TB/Khó) | Teacher / Academic |
+| `GET` | `/api/v1/quizzes/{id}` | Xem chi tiết bài thi trắc nghiệm | Student / Teacher / Admin |
+| `POST` | `/api/v1/quizzes/{id}/start` | Bắt đầu lượt làm bài thi (sinh attempt & xáo trộn đề) | Student |
+| `POST` | `/api/v1/quizzes/{id}/submit` | Nộp bài thi, tự động tính điểm & đồng bộ Sổ điểm | Student |
+| `GET` | `/api/v1/quizzes/{id}/attempts/{attemptId}` | Xem kết quả thi, bảng điểm chi tiết và lời giải | Student / Teacher |
+
+### Phân Hệ 18: Trung Tâm Điều Hành & Radar Cảnh Báo Nguy Cơ Bỏ Học (`internal/domain/analytics`)
+| Method | Endpoint | Mô tả chức năng | Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/admin/analytics/kpis` | Báo cáo chỉ số điều hành Real-time (Doanh thu, Sĩ số, Chuyên cần) | Super Admin / Director |
+| `GET` | `/api/v1/admin/analytics/churn-risk` | Radar cảnh báo nguy cơ học sinh bỏ học (Vắng 2 buổi, nợ 3 BTVN) | Admin / Coord |
+| `GET` | `/api/v1/admin/analytics/teacher-matrix` | Ma trận đánh giá hiệu quả giảng viên (Rating, Đúng giờ, Tốc độ chấm) | Super Admin / Academic |
+| `GET` | `/api/v1/admin/analytics/room-occupancy` | Thống kê tỷ lệ lấp đầy phòng học theo cơ sở | Admin / Academic |
+
+### Phân Hệ 19: Hợp Đồng Đào Tạo Điện Tử & Xuất PDF (`internal/domain/contract`)
+| Method | Endpoint | Mô tả chức năng | Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/contracts` | Danh sách hợp đồng đào tạo & cam kết việc làm | Admin / Academic / Student |
+| `POST` | `/api/v1/contracts` | Tạo hợp đồng đào tạo mới cho học viên | Admin / Academic |
+| `POST` | `/api/v1/contracts/{id}/sign` | Ký hợp đồng đào tạo điện tử (OTP / Chữ ký số) | Student / Parent |
+| `GET` | `/api/v1/contracts/{id}/pdf` | Tải file hợp đồng PDF có dấu mộc điện tử (Go PDF Engine) | Student / Parent / Admin |
 
 ---
 

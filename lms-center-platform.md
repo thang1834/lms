@@ -44,6 +44,19 @@ Hệ thống tích hợp toàn diện 10 trụ cột nghiệp vụ:
    - Drip content tuần tự, Sổ điểm đa trọng số (Weighted Gradebook), Timestamped Q&A trong video, Chứng chỉ số xác minh công khai `/verify/[code]`.
 10. **Học Liệu & Bài Tập CNTT (Monaco Editor)**:
     - Trình soạn thảo Monaco Editor làm bài tập trên web, nộp link GitHub / file ghi âm.
+11. **Quản Lý Đa Cơ Sở & Chống Trùng Lịch Phòng Học (Multi-Campus & Room Conflict Guard)**:
+    - Quản lý mạng lưới chi nhánh cơ sở, phân loại phòng học (Lab PC, Lý thuyết, Hội trường).
+    - Bộ lọc kiểm tra xung đột thời gian `OVERLAPS` tự động ngăn ngừa việc xếp 2 lớp trùng phòng cùng khung giờ.
+12. **Lên Lịch Học Bù & Dạy Bù Cho Học Sinh Vắng (Make-up Class Scheduling Engine)**:
+    - Tự động phát hiện học sinh vắng sau ca học, gợi ý 2 phương án: Ghép lớp song song cùng chủ đề bài giảng hoặc Kèm 1-1 với Trợ giảng/Giáo viên.
+    - Điểm danh buổi học bù và tự động đồng bộ chuyên cần để học viên không bị hổng kiến thức và đủ điều kiện thi.
+13. **Khảo Thí & Ngân Hàng Câu Hỏi Tự Động (Question Bank & Auto-Quiz)**:
+    - Ngân hàng câu hỏi trắc nghiệm theo môn học và cấp độ khó (Dễ, TB, Khó).
+    - Thuật toán sinh đề ngẫu nhiên, xáo trộn câu hỏi/đáp án chống gian lận, chấm điểm tức thì và đồng bộ Sổ điểm lớp.
+14. **Trung Tâm Điều Hành & Radar Cảnh Báo Nguy Cơ Bỏ Học (Executive Analytics & Churn Radar)**:
+    - Dashboard KPIs tài chính và vận hành thời gian thực.
+    - Radar tự động gắn cờ đỏ học sinh có nguy cơ bỏ học (vắng 2 buổi liên tiếp hoặc thiếu 3 BTVN) để CSKH can thiệp kịp thời.
+    - Ma trận đánh giá hiệu quả giảng viên (Teacher Performance Matrix) theo feedback, đúng giờ và tốc độ trả bài.
 
 ---
 
@@ -264,6 +277,113 @@ type SystemAuditLog struct {
 	IPAddress    *string    `json:"ipAddress,omitempty" db:"ip_address"`
 	UserAgent    *string    `json:"userAgent,omitempty" db:"user_agent"`
 	CreatedAt    time.Time  `json:"createdAt" db:"created_at"`
+}
+
+// 12. Cơ sở, phòng học & Lịch học bù
+type Campus struct {
+	ID        uuid.UUID `json:"id" db:"id"`
+	Code      string    `json:"code" db:"code"`
+	Name      string    `json:"name" db:"name"`
+	Address   string    `json:"address" db:"address"`
+	Phone     *string   `json:"phone,omitempty" db:"phone"`
+	Email     *string   `json:"email,omitempty" db:"email"`
+	IsActive  bool      `json:"isActive" db:"is_active"`
+	AuditFields
+}
+
+type Room struct {
+	ID         uuid.UUID `json:"id" db:"id"`
+	CampusID   uuid.UUID `json:"campusId" db:"campus_id"`
+	Code       string    `json:"code" db:"code"`
+	Name       string    `json:"name" db:"name"`
+	Capacity   int       `json:"capacity" db:"capacity"`
+	RoomType   string    `json:"roomType" db:"room_type"` // LAB_PC, THEORY_ROOM, HALL, STUDIO
+	Facilities *string   `json:"facilities,omitempty" db:"facilities"` // JSON string
+	IsActive   bool      `json:"isActive" db:"is_active"`
+	AuditFields
+}
+
+type MakeupSession struct {
+	ID                uuid.UUID  `json:"id" db:"id"`
+	OriginalSessionID uuid.UUID  `json:"originalSessionId" db:"original_session_id"`
+	StudentID         uuid.UUID  `json:"studentId" db:"student_id"`
+	MakeupType        string     `json:"makeupType" db:"makeup_type"` // PARALLEL_CLASS, TUTOR_1ON1
+	TargetClassID     *uuid.UUID `json:"targetClassId,omitempty" db:"target_class_id"`
+	TargetSessionID   *uuid.UUID `json:"targetSessionId,omitempty" db:"target_session_id"`
+	InstructorID      *uuid.UUID `json:"instructorId,omitempty" db:"instructor_id"`
+	ScheduledDate     time.Time  `json:"scheduledDate" db:"scheduled_date"`
+	StartTime         string     `json:"startTime" db:"start_time"`
+	EndTime           string     `json:"endTime" db:"end_time"`
+	RoomID            *uuid.UUID `json:"roomId,omitempty" db:"room_id"`
+	MeetURL           *string    `json:"meetUrl,omitempty" db:"meet_url"`
+	Status            string     `json:"status" db:"status"` // SCHEDULED, ATTENDED, ABSENT, CANCELLED
+	CoordinatorNotes  *string    `json:"coordinatorNotes,omitempty" db:"coordinator_notes"`
+	AuditFields
+}
+
+// 13. Khảo thí & Ngân hàng câu hỏi
+type QuestionBank struct {
+	ID          uuid.UUID `json:"id" db:"id"`
+	SubjectID   uuid.UUID `json:"subjectId" db:"subject_id"`
+	Code        string    `json:"code" db:"code"`
+	Name        string    `json:"name" db:"name"`
+	Description *string   `json:"description,omitempty" db:"description"`
+	AuditFields
+}
+
+type Question struct {
+	ID           uuid.UUID `json:"id" db:"id"`
+	BankID       uuid.UUID `json:"bankId" db:"bank_id"`
+	QuestionType string    `json:"questionType" db:"question_type"` // SINGLE_CHOICE, MULTIPLE_CHOICE, TRUE_FALSE, SHORT_ANSWER
+	Content      string    `json:"content" db:"content"`
+	MediaURL     *string   `json:"mediaUrl,omitempty" db:"media_url"`
+	Options      string    `json:"options" db:"options"` // JSON string
+	Difficulty   string    `json:"difficulty" db:"difficulty"` // EASY, MEDIUM, HARD
+	DefaultPoints float64  `json:"defaultPoints" db:"default_points"`
+	AuditFields
+}
+
+type Quiz struct {
+	ID                 uuid.UUID  `json:"id" db:"id"`
+	CourseID           uuid.UUID  `json:"courseId" db:"course_id"`
+	ClassID            *uuid.UUID `json:"classId,omitempty" db:"class_id"`
+	Title              string     `json:"title" db:"title"`
+	DurationMinutes    int        `json:"durationMinutes" db:"duration_minutes"`
+	PassingScore       float64    `json:"passingScore" db:"passing_score"`
+	MaxAttempts        int        `json:"maxAttempts" db:"max_attempts"`
+	IsShuffleQuestions bool       `json:"isShuffleQuestions" db:"is_shuffle_questions"`
+	IsShuffleOptions   bool       `json:"isShuffleOptions" db:"is_shuffle_options"`
+	Status             string     `json:"status" db:"status"` // DRAFT, PUBLISHED, CLOSED
+	AuditFields
+}
+
+type QuizAttempt struct {
+	ID            uuid.UUID  `json:"id" db:"id"`
+	QuizID        uuid.UUID  `json:"quizId" db:"quiz_id"`
+	StudentID     uuid.UUID  `json:"studentId" db:"student_id"`
+	AttemptNumber int        `json:"attemptNumber" db:"attempt_number"`
+	StartedAt     time.Time  `json:"startedAt" db:"started_at"`
+	SubmittedAt   *time.Time `json:"submittedAt,omitempty" db:"submitted_at"`
+	TotalScore    float64    `json:"totalScore" db:"total_score"`
+	IsPassed      bool       `json:"isPassed" db:"is_passed"`
+	AuditFields
+}
+
+// 14. Hợp đồng đào tạo điện tử
+type Contract struct {
+	ID            uuid.UUID  `json:"id" db:"id"`
+	ContractCode  string     `json:"contractCode" db:"contract_code"`
+	StudentID     uuid.UUID  `json:"studentId" db:"student_id"`
+	CourseID      *uuid.UUID `json:"courseId,omitempty" db:"course_id"`
+	ClassID       *uuid.UUID `json:"classId,omitempty" db:"class_id"`
+	ContractType  string     `json:"contractType" db:"contract_type"` // TRAINING_COMMITMENT, TUITION_INSTALLMENT, JOB_PLACEMENT
+	Title         string     `json:"title" db:"title"`
+	TermsContent  string     `json:"termsContent" db:"terms_content"`
+	FilePdfURL    *string    `json:"filePdfUrl,omitempty" db:"file_pdf_url"`
+	SignedAt      *time.Time `json:"signedAt,omitempty" db:"signed_at"`
+	SignatureData *string    `json:"signatureData,omitempty" db:"signature_data"` // JSON string
+	Status        string     `json:"status" db:"status"` // DRAFT, SENT, SIGNED, EXPIRED, TERMINATED
+	AuditFields
 }
 ```
 

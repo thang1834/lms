@@ -560,4 +560,216 @@ sequenceDiagram
     API -->> Teacher: Gửi thông báo phiếu lương tháng 10/2026 tới ứng dụng Giảng viên
 ```
 
+---
+
+## 13. Luồng 12: Điều Phối Viên Lên Lịch Học Bù Cho Học Sinh Vắng (Make-up Class Scheduling)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Coord as Chuyên viên Vận hành / CSKH
+    participant UI as Operations Portal (/operations/makeup)
+    participant API as Backend Server
+    participant DB as PostgreSQL Database
+    actor Student as Học viên & Phụ huynh
+    actor Teacher as Giáo viên / Trợ giảng kèm bù
+
+    Note over Coord, DB: Sau buổi học, hệ thống phát hiện học sinh vắng
+    Coord ->> UI: Mở tab [ Quản lý Học Bù ], thấy học viên "Nguyễn Hoàng Nam" vắng Buổi 4 lớp FE-K32
+    Coord ->> UI: Bấm nút [ Lên lịch học bù ]
+    UI ->> API: GET /api/v1/classes/parallel-topics?lessonId=...
+    API ->> DB: Tìm các lớp song song cùng dạy bài "Goroutines & Channels" trong 7 ngày tới
+    DB -->> API: Lớp FE-K33 học tối thứ Năm (19:30 - 21:30, phòng LAB-202, còn 3 chỗ)
+    API -->> UI: Trả về danh sách gợi ý (Ghép lớp FE-K33 hoặc Kèm 1-1 với TA)
+
+    Coord ->> UI: Chọn phương án [ Ghép lớp song song FE-K33 ], nhập ghi chú dặn dò
+    Coord ->> UI: Bấm [ Lưu & Gửi thông báo học bù ]
+    UI ->> API: POST /api/v1/makeup-sessions
+    API ->> DB: Tạo bản ghi makeup_sessions (status: SCHEDULED, makeupType: PARALLEL_CLASS)
+    API -->> Student: Gửi tin nhắn Zalo/Push: "Lịch học bù Buổi 4 vào 19:30 Thứ 5 tại Phòng LAB-202"
+    API -->> UI: Thông báo đặt lịch học bù thành công
+
+    Note over Teacher, DB: Đến buổi học bù tại lớp FE-K33
+    Teacher ->> UI: Mở danh sách điểm danh lớp FE-K33 (có thêm Nam - diện Học bù)
+    Teacher ->> UI: Tích chọn [ Nam: Đã tham gia học bù ] và nhập nhận xét
+    UI ->> API: PUT /api/v1/makeup-sessions/:id/attend
+    API ->> DB: Cập nhật status = ATTENDED; đồng bộ chuyên cần buổi 4 của Nam sang "ĐÃ HỌC BÙ"
+    API -->> Student: Thông báo xác nhận hoàn thành buổi học bù thành công
+```
+
+---
+
+## 14. Luồng 13: Xếp Lịch Phòng Học & Cảnh Báo Trùng Phòng Tự Động (Room Conflict Guard)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Staff as Giáo vụ / Điều phối viên
+    participant UI as Class Scheduler (/admin/classes/schedule)
+    participant API as Backend Server
+    participant DB as PostgreSQL Database
+
+    Staff ->> UI: Chọn xếp ca học cho lớp Python-K15 vào Phòng LAB-101 (19:30 - 21:30 ngày 15/10/2026)
+    UI ->> API: GET /api/v1/rooms/conflicts?roomId=LAB-101&date=2026-10-15&startTime=19:30&endTime=21:30
+    API ->> DB: SELECT COUNT(*) FROM class_sessions WHERE room_id = :id AND session_date = :date AND (start_time, end_time) OVERLAPS ('19:30', '21:30') AND status != 'CANCELLED'
+    DB -->> API: Phát hiện lớp React-K08 đang dùng phòng từ 18:00 đến 20:00 (Giao thoa 30 phút!)
+    API -->> UI: Trả về hasConflict: true, conflictingClass: "React-K08 (18:00 - 20:00)"
+
+    UI ->> UI: Khóa nút [ Lưu Lịch ], viền đỏ ô phòng học kèm thông báo lỗi
+    UI ->> Staff: Cảnh báo: "Phòng LAB-101 bị trùng với lớp React-K08 đến 20:00. Vui lòng chọn phòng khác!"
+    Staff ->> UI: Đổi phòng sang LAB-102 (Sức chứa 30, còn trống)
+    UI ->> API: GET /api/v1/rooms/conflicts?roomId=LAB-102&date=2026-10-15...
+    API ->> DB: Kiểm tra phòng LAB-102
+    DB -->> API: 0 xung đột
+    API -->> UI: hasConflict: false
+    UI ->> Staff: Hiển thị tích xanh [ Phòng khả dụng ]
+    Staff ->> UI: Bấm [ Xác nhận lưu lịch ]
+    UI ->> API: POST /api/v1/classes/:id/sessions (room_id: LAB-102)
+    API ->> DB: Lưu thành công buổi học
+```
+
+---
+
+## 15. Luồng 14: Sinh Đề Thi Trắc Nghiệm Tự Động & Chấm Điểm Khảo Thí (Question Bank & Quiz)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Teacher as Giáo viên
+    actor Student as Học viên
+    participant UI as Quiz Portal (/student/quizzes/:id)
+    participant API as Backend Server
+    participant Engine as Quiz Auto-Grading Engine
+    participant DB as PostgreSQL Database
+
+    Teacher ->> API: POST /api/v1/quizzes/generate (5 Dễ, 10 TB, 5 Khó từ ngân hàng QB_GOLANG)
+    API ->> DB: Rút ngẫu nhiên 20 câu hỏi và lưu quiz_questions
+    API -->> Teacher: Xuất bản đề thi thành công
+
+    Student ->> UI: Truy cập bài thi trắc nghiệm [ Quiz 15 Phút: Go Concurrency ]
+    UI ->> API: POST /api/v1/quizzes/:id/start
+    API ->> DB: Tạo quiz_attempts (started_at = NOW())
+    API -->> UI: Trả về 20 câu hỏi (đã xáo trộn ngẫu nhiên thứ tự câu hỏi và thứ tự A/B/C/D)
+    
+    UI ->> Student: Đếm ngược thời gian làm bài (15:00... 14:59...)
+    Student ->> UI: Chọn đáp án cho 20 câu hỏi và nhấn [ Nộp Bài ]
+    UI ->> API: POST /api/v1/quizzes/:id/submit
+    API ->> Engine: So khớp đáp án học sinh với bảng questions
+    Engine ->> Engine: Tính điểm (17/20 câu đúng => 85/100 điểm, Đạt)
+    Engine ->> DB: Lưu quiz_answers, cập nhật quiz_attempts (total_score: 85, is_passed: true)
+    Engine ->> DB: Tự động ghi điểm 85 vào Sổ điểm tổng kết lớp học (gradebook)
+    API -->> UI: Trả về bảng điểm, số câu đúng và lời giải thích chi tiết
+    UI ->> Student: Hiển thị kết quả "Chúc mừng bạn đã đạt 85/100 điểm!"
+```
+
+---
+
+## 16. Luồng 15: Giám Sát Radar Nguy Cơ Bỏ Học & Chăm Sóc Học Viên (Student Churn Risk Radar)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Coord as Chuyên viên Vận hành / CSKH
+    participant UI as Churn Radar Dashboard (/admin/analytics/churn-risk)
+    participant API as Backend Server
+    participant DB as PostgreSQL Database
+    actor Parent as Phụ huynh học sinh
+
+    Note over API, DB: Trigger hàng ngày sau các ca học
+    API ->> DB: Quét học sinh có 2 buổi vắng liên tiếp HOẶC chuyên cần < 70% HOẶC nợ 3 BTVN
+    DB -->> API: Danh sách 4 học sinh thuộc diện Cảnh Báo Nguy Cơ Cao
+
+    Coord ->> UI: Truy cập [ Radar Nguy Cơ Bỏ Học ]
+    UI ->> Coord: Cảnh báo đỏ: Học viên "Lê Hoàng Long" - Lớp FE-K32 (Vắng 2 buổi, nợ 3 BTVN)
+    Coord ->> UI: Nhấp vào hồ sơ Long, xem lịch sử chuyên cần và số điện thoại phụ huynh
+    Coord ->> Parent: Gọi điện thăm hỏi lý do vắng và hỗ trợ khó khăn bài tập
+    Parent -->> Coord: Trao đổi học sinh bị sốt xuất huyết nằm viện tuần qua
+    Coord ->> UI: Nhập ghi chú CSKH: "Nghỉ do ốm nằm viện, đề xuất xếp học bù 2 buổi vào tuần sau"
+    Coord ->> UI: Bấm nút [ Tạo lịch học bù ưu tiên ]
+    UI ->> API: Cập nhật coordinator_notes và mở popup xếp lịch bù
+```
+
+---
+
+## 17. Thiết Kế Giao Diện Trực Quan (ASCII Wireframes)
+
+### Wireframe 1: Giao diện Xếp Lịch Học Bù & Ghép Lớp Song Song (`/operations/makeup`)
+
+```text
++---------------------------------------------------------------------------------------+
+|  LMS CENTER - ĐIỀU PHỐI HỌC BÙ CHO HỌC SINH VẮNG                        [ Admin/Coord ]|
++---------------------------------------------------------------------------------------+
+|  [!] CẢNH BÁO: Có 3 học viên vắng buổi học chưa được xếp học bù!                      |
+|                                                                                       |
+|  DANH SÁCH HỌC VIÊN CẦN HỌC BÙ:                                                       |
+|  +--------------------+----------+-------------+----------------+------------------+  |
+|  | Học Viên           | Lớp Gốc  | Buổi Vắng   | Chủ Đề Bài Học | Hành Động        |  |
+|  +--------------------+----------+-------------+----------------+------------------+  |
+|  | Nguyễn Hoàng Nam   | FE-K32   | Buổi 4 (T2) | Goroutines & Ch| [ Xếp Lịch Bù ]  |  |
+|  | Trần Thảo Linh     | PY-K14   | Buổi 2 (T3) | Pandas & NumPy | [ Xếp Lịch Bù ]  |  |
+|  +--------------------+----------+-------------+----------------+------------------+  |
+|                                                                                       |
+|  POPUP XẾP LỊCH HỌC BÙ: Nguyễn Hoàng Nam (FE-K32 - Buổi 4)                            |
+|  +---------------------------------------------------------------------------------+  |
+|  | Phương thức học bù:                                                             |  |
+|  |  (o) Ghép Lớp Song Song (Được đề xuất)        ( ) Kèm 1-1 với Trợ Giảng/GV      |  |
+|  |                                                                                 |  |
+|  | Chọn lớp học song song có cùng chủ đề:                                          |  |
+|  |  [ FE-K33 - Buổi 4: Goroutines (Thứ 5 19:30 - Phòng LAB-202 - Còn 3 chỗ)      v] |  |
+|  |                                                                                 |  |
+|  | Thời gian: 19:30 - 21:30, Ngày 18/10/2026                                       |  |
+|  | Giảng viên lớp ghép: ThS. Vũ Hải Đăng                                           |  |
+|  | Ghi chú CSKH: [Học viên thi giữa kỳ ở trường ĐH, xếp học bù tối T5           ]   |  |
+|  |                                                                                 |  |
+|  | [x] Tự động gửi tin nhắn Zalo/SMS xác nhận lịch cho Học viên & Phụ huynh        |  |
+|  |                                                                                 |  |
+|  |                       [ Hủy Bỏ ]    [ XÁC NHẬN LÊN LỊCH BÙ ]                    |  |
+|  +---------------------------------------------------------------------------------+  |
++---------------------------------------------------------------------------------------+
+```
+
+### Wireframe 2: Bản Đồ Xếp Phòng Học & Cảnh Báo Trùng Phòng (`/admin/classes/schedule`)
+
+```text
++---------------------------------------------------------------------------------------+
+|  LMS CENTER - THỜI KHÓA BIỂU & XẾP PHÒNG HỌC (CAMPUS CẦU GIẤY)                        |
++---------------------------------------------------------------------------------------+
+|  Ngày: [ 15/10/2026 ]  |  Cơ sở: [ Cơ sở Cầu Giấy v ]  |  Ca: [ Ca Tối: 19:30-21:30 v]|
+|                                                                                       |
+|  SƠ ĐỒ TRẠNG THÁI PHÒNG HỌC:                                                          |
+|  +----------------------+----------------------+----------------------+               |
+|  | LAB-101 (25 máy)     | LAB-102 (30 máy)     | TH-201 (Lý Thuyết)   |               |
+|  | [X] ĐÃ CÓ LỚP        | [V] CÒN TRỐNG        | [X] ĐÃ CÓ LỚP        |               |
+|  | Lớp: React-K08       | Sẵn sàng xếp lớp!    | Lớp: IELTS-K92       |               |
+|  | GV: Hoàng Nam        |                      | GV: Ms. Linda        |               |
+|  | 18:00 - 20:00 (Trùng!)|                      | 19:00 - 21:00        |               |
+|  +----------------------+----------------------+----------------------+               |
+|                                                                                       |
+|  [!] CẢNH BÁO XUNG ĐỘT PHÒNG HỌC:                                                     |
+|  "Không thể xếp lớp Python-K15 vào LAB-101 lúc 19:30 vì phòng đang bị lớp React-K08   |
+|   chiếm dụng đến 20:00 (Xung đột 30 phút). Vui lòng chọn LAB-102."                   |
++---------------------------------------------------------------------------------------+
+```
+
+### Wireframe 3: Radar Cảnh Báo Nguy Cơ Học Sinh Bỏ Học (`/admin/analytics/churn-risk`)
+
+```text
++---------------------------------------------------------------------------------------+
+|  LMS CENTER - RADAR CẢNH BÁO NGUY CƠ BỎ HỌC (STUDENT CHURN RISK)        [ Ban Giám Đốc]|
++---------------------------------------------------------------------------------------+
+|  BỘ LỌC: Cơ sở: [ Tất cả v ] | Lớp: [ FE-K32 v ] | Mức độ nguy cơ: [ [!] Nguy cơ cao v]|
+|                                                                                       |
+|  +--------+------------------+--------+-------------+------------+--------+--------+  |
+|  | Mã HV  | Họ Và Tên        | Lớp    | Vắng Liên T.| Chuyên Cần | Nợ BTVN| Thao Tác|  |
+|  +--------+------------------+--------+-------------+------------+--------+--------+  |
+|  | HV-042 | Lê Hoàng Long    | FE-K32 | [!] 2 buổi  | 62.5%      | 3 bài  | [Chăm Sóc]|
+|  | HV-108 | Phạm Thu Hà      | PY-K14 | [!] 3 buổi  | 55.0%      | 2 bài  | [Chăm Sóc]|
+|  | HV-215 | Đỗ Minh Quân     | FE-K32 | 1 buổi      | 68.0%      | 4 bài  | [Chăm Sóc]|
+|  +--------+------------------+--------+-------------+------------+--------+--------+  |
+|                                                                                       |
+|  HÀNH ĐỘNG NHANH CHO HỌC VIÊN: Lê Hoàng Long (0988.123.456 - Phụ huynh: 0912.789.012) |
+|  [ Gọi Điện CSKH ]  [ Xếp Học Bù Buổi Vắng ]  [ Gia Hạn Deadline BTVN ]  [ Đổi Lớp ]  |
++---------------------------------------------------------------------------------------+
+```
+
 

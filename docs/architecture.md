@@ -2,7 +2,7 @@
 
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
 > **Tài liệu:** `docs/architecture.md`  
-> **Phiên bản:** 2.1.0 (Kiến trúc Go Backend chuẩn hóa theo blueprint `gmhafiz/go8` + Frontend Nuxt UI)  
+> **Phiên bản:** 2.2.0 (Kiến trúc Go Backend chuẩn hóa theo blueprint `gmhafiz/go8` + Frontend Nuxt UI, bổ sung Multi-Campus, Make-up Scheduling, Quiz Bank & Churn Radar)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
@@ -232,6 +232,28 @@ erDiagram
     Discount ||--o{ TuitionInvoice : discounts_amount
     StudentProfile ||--o{ TuitionInvoice : billed_to
     TuitionInvoice ||--o{ PaymentTransaction : settles
+
+    Campus ||--o{ Room : contains
+    Room ||--o{ ClassSession : hosts_in_room
+    ClassSession ||--o{ MakeupSession : original_session
+    StudentProfile ||--o{ MakeupSession : attends_makeup
+    TeacherProfile ||--o{ MakeupSession : conducts_makeup
+    Class ||--o{ MakeupSession : parallel_target_class
+    Room ||--o{ MakeupSession : holds_makeup_room
+    
+    Subject ||--o{ QuestionBank : categorizes_bank
+    QuestionBank ||--o{ Question : contains_questions
+    Course ||--o{ Quiz : has_quizzes
+    Class ||--o{ Quiz : assigns_quizzes
+    Quiz ||--o{ QuizQuestion : includes
+    Question ||--o{ QuizQuestion : maps_to
+    Quiz ||--o{ QuizAttempt : records_attempts
+    StudentProfile ||--o{ QuizAttempt : takes_quiz
+    QuizAttempt ||--o{ QuizAnswer : contains_answers
+    Question ||--o{ QuizAnswer : answered_question
+
+    StudentProfile ||--o{ Contract : signs_contract
+    Course ||--o{ Contract : specifies_course
 ```
 
 
@@ -772,6 +794,131 @@ erDiagram
 
 ---
 
+#### Nhóm 13: Quản Lý Cơ Sở, Phòng Học & Lịch Học Bù (Campuses, Rooms & Make-up Sessions)
+
+38. **`campuses`** (Hệ thống chi nhánh / cơ sở đào tạo):
+    - `id` (UUID, PK).
+    - `code` (String, Unique): Mã định danh cơ sở (ví dụ: `CS_CAUGIAY`, `CS_HADONG`, `CS_Q1_HCM`).
+    - `name` (String): Tên cơ sở (ví dụ: "Cơ sở Cầu Giấy - Hà Nội").
+    - `address` (Text): Địa chỉ chi tiết.
+    - `phone` (String, Nullable): Hotline chi nhánh.
+    - `email` (String, Nullable): Email tiếp nhận tuyển sinh cơ sở.
+    - `isActive` (Boolean, Default `true`).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+39. **`rooms`** (Danh mục phòng học & tiện ích):
+    - `id` (UUID, PK).
+    - `campusId` (UUID, FK -> `campuses.id`): Thuộc cơ sở nào.
+    - `code` (String): Mã phòng (ví dụ: `LAB-201`, `TH-302`, `HALL-A`).
+    - `name` (String): Tên phòng học (ví dụ: "Phòng Thực Hành Máy Tính 201").
+    - `capacity` (Int, Default `25`): Sức chứa tối đa (số học viên).
+    - `roomType` (Enum: `LAB_PC`, `THEORY_ROOM`, `HALL`, `STUDIO`).
+    - `facilities` (JSON, Nullable): Tiện ích (`{"projector": true, "airConditioner": true, "lanGigabit": true}`).
+    - `isActive` (Boolean, Default `true`).
+    - Unique Constraint: `(campusId, code)`.
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+40. **`makeup_sessions`** (Lịch học bù / dạy bù cho học sinh vắng):
+    - `id` (UUID, PK).
+    - `originalSessionId` (UUID, FK -> `class_sessions.id`): Buổi học chính thức mà học viên đã vắng.
+    - `studentId` (UUID, FK -> `student_profiles.id`): Học sinh cần học bù.
+    - `makeupType` (Enum: `PARALLEL_CLASS`, `TUTOR_1ON1`): Ghép lớp song song hoặc kèm 1-1 với GV/TA.
+    - `targetClassId` (UUID, Nullable, FK -> `classes.id`): Lớp song song được ghép vào (nếu là `PARALLEL_CLASS`).
+    - `targetSessionId` (UUID, Nullable, FK -> `class_sessions.id`): Buổi học song song tương ứng.
+    - `instructorId` (UUID, Nullable, FK -> `teacher_profiles.id`): Giáo viên hoặc Trợ giảng phụ trách (nếu là `TUTOR_1ON1`).
+    - `scheduledDate` (Date): Ngày học bù.
+    - `startTime` (Time), `endTime` (Time): Khung giờ học bù.
+    - `roomId` (UUID, Nullable, FK -> `rooms.id`): Phòng học nếu học bù Offline.
+    - `meetUrl` (String, Nullable): Link phòng học trực tuyến nếu học bù Online.
+    - `status` (Enum: `SCHEDULED`, `ATTENDED`, `ABSENT`, `CANCELLED`).
+    - `coordinatorNotes` (Text, Nullable): Ghi chú của Chuyên viên Vận hành / CSKH.
+    - `confirmedAt` (Timestamp, Nullable): Thời điểm học viên/phụ huynh xác nhận lịch.
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+---
+
+#### Nhóm 14: Ngân Hàng Đề Thi, Câu Hỏi & Khảo Thí Trắc Nghiệm Tự Động (Question Banks & Quizzes)
+
+41. **`question_banks`** (Ngân hàng câu hỏi theo môn học):
+    - `id` (UUID, PK).
+    - `subjectId` (UUID, FK -> `subjects.id`): Môn học tương ứng.
+    - `code` (String, Unique): Mã ngân hàng đề (ví dụ: `QB_GOLANG_CORE`, `QB_REACT_ADV`).
+    - `name` (String): Tên ngân hàng câu hỏi.
+    - `description` (Text, Nullable).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+42. **`questions`** (Chi tiết câu hỏi thi trắc nghiệm):
+    - `id` (UUID, PK).
+    - `bankId` (UUID, FK -> `question_banks.id`).
+    - `questionType` (Enum: `SINGLE_CHOICE`, `MULTIPLE_CHOICE`, `TRUE_FALSE`, `SHORT_ANSWER`).
+    - `content` (Text): Nội dung câu hỏi (hỗ trợ Markdown, Code snippet, LaTeX).
+    - `mediaUrl` (String, Nullable): Ảnh minh họa hoặc audio nghe.
+    - `options` (JSON): Danh sách đáp án `[{"id": "A", "text": "...", "isCorrect": true, "explanation": "..."}]`.
+    - `difficulty` (Enum: `EASY`, `MEDIUM`, `HARD`).
+    - `defaultPoints` (Decimal, Default `1.0`).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+43. **`quizzes`** (Bài thi / Bài kiểm tra trắc nghiệm):
+    - `id` (UUID, PK).
+    - `courseId` (UUID, FK -> `courses.id`).
+    - `classId` (UUID, Nullable, FK -> `classes.id`): Gắn với lớp cụ thể hoặc dùng chung toàn khóa.
+    - `title` (String): Tiêu đề bài kiểm tra (ví dụ: "Quiz 15 Phút: Go Concurrency & Channels").
+    - `durationMinutes` (Int, Default `15`): Thời gian làm bài (0 = không giới hạn).
+    - `passingScore` (Decimal, Default `60.0`): Điểm đạt bài thi (thang 100).
+    - `maxAttempts` (Int, Default `1`): Số lần làm bài tối đa.
+    - `isShuffleQuestions` (Boolean, Default `true`): Xáo trộn ngẫu nhiên thứ tự câu hỏi.
+    - `isShuffleOptions` (Boolean, Default `true`): Xáo trộn thứ tự các lựa chọn A/B/C/D.
+    - `status` (Enum: `DRAFT`, `PUBLISHED`, `CLOSED`).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+44. **`quiz_questions`** (Bảng trung gian N-N gán câu hỏi vào đề thi):
+    - `id` (UUID, PK).
+    - `quizId` (UUID, FK -> `quizzes.id`).
+    - `questionId` (UUID, FK -> `questions.id`).
+    - `orderIndex` (Int): Thứ tự câu hỏi trong đề.
+    - `points` (Decimal, Default `1.0`): Trọng số điểm câu hỏi trong đề thi này.
+    - Unique Constraint: `(quizId, questionId)`.
+
+45. **`quiz_attempts`** (Lượt thi của học viên):
+    - `id` (UUID, PK).
+    - `quizId` (UUID, FK -> `quizzes.id`).
+    - `studentId` (UUID, FK -> `student_profiles.id`).
+    - `attemptNumber` (Int, Default `1`): Lần làm bài thứ mấy.
+    - `startedAt` (Timestamp, Default `now()`).
+    - `submittedAt` (Timestamp, Nullable).
+    - `totalScore` (Decimal, Default `0`): Tổng điểm đạt được.
+    - `isPassed` (Boolean, Default `false`).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+46. **`quiz_answers`** (Chi tiết câu trả lời của từng học viên trong lượt thi):
+    - `id` (UUID, PK).
+    - `attemptId` (UUID, FK -> `quiz_attempts.id`).
+    - `questionId` (UUID, FK -> `questions.id`).
+    - `studentAnswer` (JSON): Đáp án học sinh chọn (`["A"]` hoặc `["A", "C"]` hoặc text).
+    - `isCorrect` (Boolean, Default `false`).
+    - `earnedScore` (Decimal, Default `0`).
+
+---
+
+#### Nhóm 15: Hợp Đồng Đào Tạo Điện Tử (Electronic Training Contracts)
+
+47. **`contracts`** (Hợp đồng cam kết đào tạo, thỏa thuận việc làm & bảo mật):
+    - `id` (UUID, PK).
+    - `contractCode` (String, Unique): Mã hợp đồng (ví dụ: `HDDT-2026-REACT-089`).
+    - `studentId` (UUID, FK -> `student_profiles.id`).
+    - `courseId` (UUID, Nullable, FK -> `courses.id`).
+    - `classId` (UUID, Nullable, FK -> `classes.id`).
+    - `contractType` (Enum: `TRAINING_COMMITMENT`, `TUITION_INSTALLMENT`, `JOB_PLACEMENT_GUARANTEE`).
+    - `title` (String): Tiêu đề hợp đồng.
+    - `termsContent` (Text): Nội dung điều khoản Markdown / HTML.
+    - `filePdfUrl` (String, Nullable): URL file hợp đồng PDF có dấu mộc điện tử.
+    - `signedAt` (Timestamp, Nullable): Thời điểm ký hợp đồng điện tử.
+    - `signatureData` (JSON, Nullable): Dữ liệu chữ ký (`signatureBase64`, `signerIp`, `signerPhone`, `verificationOtp`).
+    - `status` (Enum: `DRAFT`, `SENT`, `SIGNED`, `EXPIRED`, `TERMINATED`).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+---
+
 ## 3. Ma Trận Phân Quyền Hạt Nhân RBAC (Granular RBAC Matrix)
 
 | Chức năng / Permission Code | Super Admin | Academic Manager (Giáo vụ) | Class Coordinator (Vận hành/CSKH) | Teacher (Giảng viên) | Examiner (Giám khảo) | Student (Học viên) | Parent (Phụ huynh) |
@@ -782,26 +929,31 @@ erDiagram
 | Xem Nhật ký Kiểm toán Toàn hệ thống (Audit Logs) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Quản trị Người Dùng Toàn Diện (CRUD, Khóa/Mở) | ✅ | ✅ (xem/lọc) | ❌ | ❌ | ❌ | ❌ | ❌ |
 | CRUD Danh mục môn học (`subjects`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Quản lý Cơ sở (`campuses`) & Danh mục Phòng học (`rooms`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Quản lý Bậc lương & Duyệt bảng lương GV | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Quản lý Mã giảm giá (`discounts`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Tạo khóa học, phân công giáo viên & mời hội đồng | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Xếp lớp, cấu hình lịch học linh hoạt (TA optional) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Dời lịch học / đổi phòng / đổi Meet link | ✅ | ✅ | ✅ (lớp phụ trách) | ⚠️ (đề xuất) | ❌ | ❌ | ❌ |
+| Dời lịch học / đổi phòng (Room Conflict Guard) / đổi Meet | ✅ | ✅ | ✅ (lớp phụ trách) | ⚠️ (đề xuất) | ❌ | ❌ | ❌ |
+| Lên lịch học bù & ghép lớp song song (`makeup_sessions`) | ✅ | ✅ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ | ❌ |
+| Điểm danh buổi học bù & dạy bù 1-1 | ✅ | ✅ | ✅ (hỗ trợ) | ✅ (phụ trách) | ❌ | ❌ | ❌ |
 | Cấu hình thời gian gửi tin tự động & cảnh báo trễ | ✅ | ✅ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ | ❌ |
 | Đánh giá chất lượng giáo viên (Audit định kỳ) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Đánh giá giáo viên theo từng buổi học | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Ghi chú chăm sóc học sinh vắng (`coordinatorNote`) | ✅ | ✅ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ | ❌ |
+| Giám sát Radar nguy cơ bỏ học (Churn Radar) & KPIs | ✅ | ✅ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ | ❌ |
 | Check-in/out ca dạy (chấm công giáo viên) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Điểm danh học sinh lớp Hybrid (Offline/Online) | ✅ | ✅ | ✅ (hỗ trợ) | ✅ | ❌ | ❌ | ❌ |
 | Upload tài liệu học tập, slide, code mẫu | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Giao bài tập & Chấm BTVN trong lớp học | ✅ | ❌ | ❌ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ |
+| Quản lý Ngân hàng câu hỏi & Tạo đề thi trắc nghiệm | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Làm bài kiểm tra trắc nghiệm online (Auto-Quiz) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Chấm điểm đồ án tốt nghiệp & thuyết trình cuối khóa | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ |
 | Mua trực tiếp khóa học trực tuyến (Free / Áp mã VietQR) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | Xem bài giảng chống tua video, Timestamped Q&A | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Làm BTVN trên Monaco Code Editor | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| Xem chuyên cần, điểm số của con | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Thanh toán học phí VietQR, thẻ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Xác nhận thu tiền mặt tại quầy | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Ký hợp đồng đào tạo điện tử & Xem cam kết việc làm | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Quản lý & Xuất PDF Hợp đồng đào tạo | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Xem chuyên cần, điểm số của con | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Thanh toán học phí VietQR, thẻ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | Xác nhận thu tiền mặt tại quầy | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
@@ -936,7 +1088,12 @@ LMS/
 │   │       ├── 20260923000006_create_invoices_payments.sql
 │   │       ├── 20260923000007_create_video_progress_discussions.sql
 │   │       ├── 20260923000008_create_notification_logs_templates.sql
-│   │       └── 20260923000009_create_capstone_examiners.sql
+│   │       ├── 20260923000009_create_capstone_examiners.sql
+│   │       ├── 20260923000010_create_payroll_salary_grades.sql
+│   │       ├── 20260923000011_create_website_settings_audit_logs.sql
+│   │       ├── 20260923000012_create_campuses_rooms_makeup.sql
+│   │       ├── 20260923000013_create_question_banks_quizzes.sql
+│   │       └── 20260923000014_create_contracts.sql
 │   ├── internal/
 │   │   ├── server/                            # Khởi tạo Server & Dependency Injection
 │   │   │   ├── server.go                      # Server struct & lifecycle
@@ -949,14 +1106,24 @@ LMS/
 │   │   │   └── request_id.go                  # Gắn Request ID phục vụ truy vết log
 │   │   ├── domain/                            # Các phân hệ nghiệp vụ độc lập (Clean Layered)
 │   │   │   ├── auth/                          # Đăng nhập, đăng ký, cấp phát Token, phân quyền
+│   │   │   ├── system/                        # Cấu hình website branding, audit logs
+│   │   │   ├── user/                          # Quản lý người dùng, đa vai trò (Super Admin)
+│   │   │   ├── subject/                       # Danh mục môn học động (CRUD)
+│   │   │   ├── campus/                        # Quản lý cơ sở, phòng học & chống trùng lịch (Conflict Guard)
 │   │   │   ├── class/                         # Khóa học, Module, Lớp học & Buổi học linh hoạt (TA optional)
+│   │   │   ├── makeup/                        # Lên lịch học bù ghép lớp & kèm 1-1 cho học sinh vắng
 │   │   │   ├── attendance/                    # Điểm danh học sinh Hybrid & Chấm công giáo viên
+│   │   │   ├── quiz/                          # Ngân hàng câu hỏi, sinh đề thi ngẫu nhiên & auto-grading
 │   │   │   ├── evaluation/                    # Đánh giá giáo viên theo buổi (Student Feedback) & Audit
+│   │   │   ├── analytics/                     # KPIs Executive & Radar cảnh báo nguy cơ bỏ học (Churn Radar)
 │   │   │   ├── capstone/                      # Đồ án tốt nghiệp, Hội đồng Giám khảo & Rubric defense
 │   │   │   ├── course_video/                  # Trình phát video chống tua & Heartbeat anti-cheat
 │   │   │   ├── assignment/                    # BTVN, nộp code Monaco & Chấm điểm Rubric
-│   │   │   ├── notification/                  # Engine gửi tin nhắn Zalo/SMS (sau 15p, nhắc 24h/2h, cảnh báo GV trễ 10p)
+│   │   │   ├── discount/                      # Mã giảm giá, voucher khuyến mãi
 │   │   │   ├── billing/                       # Mua khóa học trực tuyến (Free 1-click / VietQR), webhook ngân hàng, thu tiền mặt
+│   │   │   ├── payroll/                       # Quản lý bậc lương, tính lương tháng tự động theo KPI & phạt trễ
+│   │   │   ├── contract/                      # Hợp đồng đào tạo điện tử & cam kết việc làm
+│   │   │   ├── notification/                  # Engine gửi tin nhắn Zalo/SMS (sau 15p, nhắc 24h/2h, cảnh báo GV trễ 10p)
 │   │   │   └── certificate/                   # Cấp chứng chỉ & URL xác minh công khai (/verify)
 │   │   │       # Mỗi domain tuân thủ cấu trúc 3 tầng chuẩn của go8:
 │   │   │       # ├── handler/ (HTTP Handlers, register.go, DTO validator)

@@ -125,6 +125,21 @@ flowchart TD
 
 ---
 
+### Nhóm 9: Cơ Sở, Phòng Học, Lịch Học Bù, Khảo Thí & Radar Cảnh Báo (Campus, Make-up, Quiz & Churn Radar)
+
+| Mã Test Case | Phân hệ | Mô tả kịch bản | Các bước thực hiện | Kết quả mong đợi | Mức độ |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **TC-CAMPUS-01** | Cơ sở & Phòng | CRUD Cơ sở chi nhánh và phòng học | 1. Tạo cơ sở mới `CS_HADONG` ("Cơ sở Hà Đông").<br>2. Thêm phòng học `LAB-201` (Sức chứa 25 máy, projector, lan).<br>3. Lấy danh sách phòng theo cơ sở. | Cơ sở và phòng học được lưu thành công; Dữ liệu tiện ích JSON parse chính xác; Phân trang và tìm kiếm hoạt động chuẩn. | **P0** |
+| **TC-ROOM-CONF-01** | Chống trùng phòng | Ngăn chặn xếp lịch trùng phòng học cùng khung giờ | 1. Lớp A đặt phòng `LAB-101` từ 18:00 đến 20:00 ngày 15/10/2026.<br>2. Giáo vụ xếp lớp B vào phòng `LAB-101` lúc 19:30 - 21:30 cùng ngày.<br>3. Gọi `GET /api/v1/rooms/conflicts`. | Trả về `hasConflict: true`, cảnh báo trùng 30 phút với lớp A; Hệ thống chặn không cho phép lưu lịch; Đổi sang phòng trống trả về `hasConflict: false`. | **P0 (Blocker)** |
+| **TC-MAKEUP-01** | Lịch học bù | Xếp học bù ghép lớp song song cho học sinh vắng | 1. Học sinh Nam vắng Buổi 4 lớp FE-K32.<br>2. Điều phối viên chọn ghép lớp song song FE-K33 (học tối T5 cùng bài).<br>3. Gọi `POST /api/v1/makeup-sessions`. | Tạo bản ghi `makeup_sessions` thành công (loại `PARALLEL_CLASS`); Gửi thông báo Zalo/Push cho học viên; Lớp FE-K33 xuất hiện tên Nam diện học bù. | **P0** |
+| **TC-MAKEUP-02** | Lịch học bù | Điểm danh buổi học bù và tự động đồng bộ chuyên cần | 1. Giảng viên mở danh sách ca học bù / lớp ghép.<br>2. Tích chọn [Đã tham gia] kèm nhận xét bài làm.<br>3. Gọi `PUT /api/v1/makeup-sessions/{id}/attend`. | Trạng thái chuyển `ATTENDED`; Chuyên cần buổi học gốc của Nam được đồng bộ sang "ĐÃ HỌC BÙ"; Học viên đủ điều kiện thi tốt nghiệp. | **P0** |
+| **TC-QUIZ-01** | Trắc nghiệm | Sinh đề ngẫu nhiên từ Ngân hàng câu hỏi và xáo trộn đề | 1. Tạo ngân hàng câu hỏi `QB_GOLANG` (50 câu).<br>2. Gọi `POST /api/v1/quizzes/generate` rút 5 Dễ, 10 TB, 5 Khó.<br>3. Hai học sinh khác nhau cùng vào thi. | Đề thi sinh ra đủ 20 câu theo đúng cấu trúc độ khó; Thứ tự câu hỏi và thứ tự đáp án A/B/C/D của 2 học sinh được xáo trộn ngẫu nhiên. | **P0** |
+| **TC-QUIZ-02** | Trắc nghiệm | Nộp bài thi trắc nghiệm, tự động chấm điểm và đồng bộ Sổ điểm | 1. Học sinh chọn đáp án cho 20 câu và bấm nộp bài.<br>2. Gọi `POST /api/v1/quizzes/{id}/submit`. | Hệ thống so khớp đáp án, tính điểm trong 0.5s; Trả về kết quả đúng/sai và lời giải; Điểm tự động ghi vào Sổ điểm tổng kết lớp học (`gradebook`). | **P0** |
+| **TC-CHURN-01** | Churn Radar | Radar phát hiện học sinh có nguy cơ bỏ học | 1. Học sinh Long vắng 2 buổi liên tiếp và nợ 3 bài tập.<br>2. Điều phối viên truy cập `/admin/analytics/churn-risk`. | Tên Long xuất hiện trên danh sách cảnh báo đỏ (Mức độ: `HIGH`); Hiển thị nút thao tác nhanh: Gọi điện chăm sóc, Xếp lịch học bù, Gia hạn deadline. | **P0** |
+| **TC-CONTRACT-01** | Hợp đồng & PDF | Ký hợp đồng đào tạo điện tử và xuất PDF | 1. Học sinh mở hợp đồng cam kết việc làm trực tuyến.<br>2. Xác nhận chữ ký số/OTP.<br>3. Tải file PDF hợp đồng. | Hợp đồng chuyển trạng thái `SIGNED`; File PDF sinh ra có mã băm bảo mật SHA-256 và dấu mộc điện tử của trung tâm. | **P1** |
+
+---
+
 ## 3. Lệnh Chạy Bộ Kiểm Thử Tự Động (Nuxt UI + Go-chi Stack)
 
 ```bash

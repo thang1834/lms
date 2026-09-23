@@ -393,6 +393,106 @@ Loại bỏ hoàn toàn cơ chế hardcode enum tĩnh, chuyển sang quản lý 
 
 ---
 
+### Phân hệ 17: Quản Lý Cơ Sở, Phòng Học & Chống Trùng Lịch (Multi-Campus & Room Conflict Guard)
+
+Hỗ trợ trung tâm đào tạo mở rộng quy mô đa chi nhánh và kiểm soát tài nguyên phòng học:
+
+- **FR-CAMPUS-01 (Quản lý Chuỗi Cơ sở / Chi nhánh - Multi-Campus Support):**
+  - Quản lý danh sách các chi nhánh trung tâm: Mã cơ sở, Tên cơ sở, Địa chỉ chi tiết, Hotline, Email liên hệ, Bản đồ định vị GPS.
+  - Phân quyền nhân sự quản lý theo cơ sở (Campus Admin/Staff) hoặc quản trị toàn chuỗi (Super Admin).
+- **FR-CAMPUS-02 (Quản lý Danh mục Phòng học & Cơ sở vật chất):**
+  - Phân loại phòng học: Phòng thực hành máy tính (Lab PC), Phòng lý thuyết tiêu chuẩn, Hội trường lớn, Phòng Studio quay bài giảng.
+  - Định mức sức chứa tối đa (Capacity: 15-100 học viên) và tiện ích đi kèm (Máy chiếu, Điều hòa, Bảng tương tác, Mạng LAN gigabit).
+- **FR-CAMPUS-03 (Bộ Kiểm Soát Chống Trùng Phòng Học Tự Động - Room Conflict Guard):**
+  - Khi tạo lớp học hoặc dời ngày/đổi giờ buổi học (`class_sessions`), hệ thống tự động kiểm tra xung đột thời gian với phòng học đã chọn:
+    - Logic kiểm tra SQL: Không cho phép tồn tại ca học khác cùng phòng trong khoảng thời gian giao thoa `(start_time, end_time) OVERLAPS (:new_start, :new_end)` tại cùng ngày học.
+    - Cảnh báo trực quan trên giao diện lưới thời khóa biểu (Timetable Grid): Phòng học bận sẽ hiển thị màu đỏ kèm thông tin lớp đang chiếm dụng.
+
+---
+
+### Phân hệ 18: Lên Lịch Dạy Bù & Học Bù Cho Học Sinh Vắng (Make-up Class Scheduling Engine)
+
+Đặc tả chuyên sâu quy trình hỗ trợ học viên vắng buổi học trước được học bù đầy đủ kiến thức, không bị gián đoạn lộ trình:
+
+- **FR-MAKEUP-01 (Tự Động Phát Hiện & Đề Xuất Học Bù Sau Điểm Danh):**
+  - Khi giáo viên hoặc vận hành điểm danh học sinh trạng thái `ABSENT` (Vắng có phép hoặc không phép), hệ thống tự động sinh cờ **"Cần Xếp Học Bù"** trên Dashboard của Chuyên viên Vận hành lớp (Class Coordinator).
+  - Hệ thống gợi ý 2 phương án học bù linh hoạt:
+    1. **Ghép Lớp Song Song (Parallel Class Make-up):** Tìm các lớp học khác đang học cùng chương trình, cùng môn học và có buổi học dạy đúng chủ đề (`topic` / `lesson_id`) diễn ra trong vòng 7 ngày tới còn chỗ trống.
+    2. **Kèm Dạy Bù 1-1 (Tutor 1-on-1 Make-up):** Phân công một Trợ giảng (TA) hoặc Giảng viên phụ trách buổi bù 1-1 qua Google Meet/Zoom hoặc trực tiếp tại phòng học cơ sở.
+- **FR-MAKEUP-02 (Giao Diện Xếp Lịch Bù & Xác Nhận Thời Gian):**
+  - Điều phối viên chọn hình thức, chọn buổi học ghép hoặc chọn giáo viên kèm 1-1, ấn định thời gian (`scheduledDate`, `startTime`, `endTime`, `roomId` hoặc `meetUrl`).
+  - Hệ thống gửi tin nhắn xác nhận lịch học bù tự động qua Zalo ZNS / Push Notification kèm link xác nhận tới Học viên và Phụ huynh.
+- **FR-MAKEUP-03 (Điểm Danh Buổi Bù & Đồng Bộ Tiến Độ Học Tập):**
+  - Khi buổi học bù diễn ra, Giáo viên/Trợ giảng phụ trách xác nhận tham gia (`ATTENDED`).
+  - Hệ thống tự động ghi nhận hoàn thành buổi bù và cập nhật tiến độ học tập của học viên, bảo lưu điều kiện chuyên cần để được thi tốt nghiệp và cấp chứng chỉ.
+
+---
+
+### Phân hệ 19: Khảo Thí, Ngân Hàng Câu Hỏi & Thi Trắc Nghiệm Tự Động (Question Bank & Auto-Quiz)
+
+- **FR-QUIZ-01 (Quản trị Ngân hàng Câu hỏi Đa dạng):**
+  - Quản lý câu hỏi phân theo Môn học (`subjects`) và Cấp độ khó (`EASY`, `MEDIUM`, `HARD`).
+  - Hỗ trợ 4 định dạng câu hỏi: Trắc nghiệm 1 đáp án (Single Choice), Trắc nghiệm nhiều đáp án (Multiple Choice), Đúng/Sai (True/False), và Điền từ ngắn (Short Answer).
+  - Cho phép chèn hình ảnh, công thức toán LaTeX, đoạn mã code lập trình vào nội dung câu hỏi và từng đáp án.
+- **FR-QUIZ-02 (Tạo Đề Thi & Sinh Đề Tự Động Ngẫu Nhiên):**
+  - Cho phép tạo bài kiểm tra nhanh 15 phút, bài thi giữa kỳ, bài kiểm tra cuối module.
+  - Cơ chế sinh đề ngẫu nhiên (Randomization): Tự động rút ngẫu nhiên $X$ câu Dễ, $Y$ câu Trung bình, $Z$ câu Khó từ ngân hàng câu hỏi; Xáo trộn thứ tự câu hỏi và thứ tự đáp án đối với từng học viên nhằm chống gian lận.
+- **FR-QUIZ-03 (Chấm Điểm Tự Động & Đồng Bộ Sổ Điểm):**
+  - Học viên nộp bài thi, hệ thống tính điểm tự động trong 0.5 giây.
+  - Hiển thị bảng đáp án đúng/sai kèm lời giải chi tiết (nếu cấu hình cho phép xem sau khi thi).
+  - Tự động đồng bộ điểm bài thi vào Sổ điểm tổng kết khóa học (`gradebook_configs`).
+
+---
+
+### Phân hệ 20: Trung Tâm Điều Hành & Radar Cảnh Báo Nguy Cơ Bỏ Học (Executive Analytics & Student Churn Risk Radar)
+
+Cung cấp cho Ban Giám đốc và Quản lý Đào tạo cái nhìn toàn cảnh về hiệu quả vận hành và chất lượng đào tạo:
+
+- **FR-ANALYTICS-01 (Executive Analytics & Real-time KPIs Dashboard):**
+  - Tổng doanh thu đào tạo theo tháng/quý/năm, so sánh cùng kỳ.
+  - Số lượng học viên đang học (`ACTIVE`), số lớp đang mở, tỷ lệ lấp đầy phòng học.
+  - Tỷ lệ chuyên cần trung bình toàn trung tâm, tỷ lệ hoàn thành khóa học và tỷ lệ tốt nghiệp.
+- **FR-ANALYTICS-02 (Radar Cảnh Báo Học Sinh Có Nguy Cơ Bỏ Học - Churn Risk Radar):**
+  - Thuật toán tự động gắn cờ đỏ cảnh báo học sinh có nguy cơ thôi học/bỏ dở theo 3 tiêu chí:
+    1. Nghỉ học 2 buổi liên tiếp gần nhất mà chưa học bù.
+    2. Tỷ lệ chuyên cần lũy kế dưới 70%.
+    3. Thiếu từ 3 bài tập về nhà liên tiếp hoặc điểm số trung bình dưới 50/100.
+  - Danh sách cảnh báo hiển thị trên giao diện của Chuyên viên Vận hành và Giám đốc Đào tạo để can thiệp kịp thời (gọi điện chăm sóc, hỗ trợ xếp học bù, gia hạn thời gian làm bài).
+- **FR-ANALYTICS-03 (Ma Trận Đánh Giá Giảng Viên Toàn Diện - Teacher Performance Matrix):**
+  - Bảng xếp hạng giảng viên dựa trên:
+    - Điểm hài lòng từ học sinh qua feedback từng buổi (`session_feedbacks`).
+    - Tỷ lệ đúng giờ (dựa trên check-in thực tế).
+    - Tốc độ chấm bài tập (thời gian từ lúc học sinh nộp đến khi trả bài có điểm & nhận xét).
+    - Tỷ lệ học viên vượt qua kỳ thi tốt nghiệp / bảo vệ đồ án của lớp phụ trách.
+
+---
+
+### Phân hệ 21: Quản Trị Hợp Đồng Đào Tạo Điện Tử & Công Cụ Xuất Báo Cáo/Chứng Nhận PDF (Contracts & Go PDF Engine)
+
+- **FR-CONTRACT-01 (Quản lý Hợp Đồng Đào Tạo Điện Tử):**
+  - Quản lý hợp đồng cam kết đào tạo việc làm, thỏa thuận bảo mật và cam kết học tập đối với các khóa học dài hạn.
+  - Cho phép học viên và phụ huynh ký hợp đồng điện tử bằng chữ ký số / ký tay trên màn hình cảm ứng hoặc mã OTP qua SMS.
+  - Lưu trữ hợp đồng đã ký dưới định dạng PDF có mã băm bảo mật SHA-256 chống chỉnh sửa.
+- **FR-PDF-01 (Go PDF Rendering Engine):**
+  - Module Go thuần sinh tài liệu PDF tốc độ cao (không phụ thuộc Headless Chrome) cho:
+    - Phiếu thu học phí / Biên lai thanh toán điện tử có mã VietQR và dấu mộc điện tử.
+    - Bảng điểm chi tiết kết quả học tập của từng học viên.
+    - Chứng chỉ số tốt nghiệp khổ A4 ngang có mã QR xác thực công khai.
+    - Phiếu lương chi tiết gửi từng giảng viên hàng tháng.
+
+---
+
+### Phân hệ 22: Sao Lưu CSDL & Khôi Phục Thảm Họa Tự Động (Database Backup & Disaster Recovery)
+
+- **FR-BACKUP-01 (Lập Lịch Sao Lưu Tự Động Định Kỳ):**
+  - Tự động chạy tiến trình `pg_dump` nén sao lưu toàn bộ CSDL PostgreSQL hàng ngày vào lúc 02:00 sáng.
+  - Mã hóa bản sao lưu bằng AES-256 và tự động đẩy lên Cloud Storage (AWS S3 / Google Cloud Storage / MinIO).
+- **FR-BACKUP-02 (Chính Sách Lưu Trữ & Thử Nghiệm Khôi Phục Thảm Họa - DR):**
+  - Chính sách lưu trữ (Retention Policy): Giữ bản sao lưu hàng ngày trong 30 ngày, bản sao lưu hàng tháng trong 12 tháng.
+  - Cung cấp tài liệu và script kiểm thử khôi phục thảm họa định kỳ để đảm bảo RPO (Recovery Point Objective) $\le 24$ giờ và RTO (Recovery Time Objective) $\le 2$ giờ.
+
+---
+
 ## 4. Bổ Sung Ma Trận User Stories (Acceptance Criteria)
 
 | Mã Story | Đối tượng | Hành động (User Story) | Tiêu chí chấp nhận (Acceptance Criteria) |
@@ -420,6 +520,15 @@ Loại bỏ hoàn toàn cơ chế hardcode enum tĩnh, chuyển sang quản lý 
 | **US-SUBJ-01** | Quản lý Đào tạo | Quản lý danh mục môn học động (CRUD) | - Thêm/sửa/xóa mềm môn học (CNTT, Ngoại ngữ, Thiết kế...) linh hoạt trên giao diện quản trị. |
 | **US-CLASS-GRD-01**| Giảng viên | Chấm bài tập của học sinh trực tiếp trong lớp học | - Vào lớp học phụ trách, xem danh sách bài nộp của cả lớp.<br>- Mở bài làm xem code Monaco/GitHub, chấm điểm theo Rubric và gửi nhận xét tức thì. |
 | **US-AUDIT-01** | Hệ thống | Ghi nhận Audit fields và áp dụng Soft Delete | - Tự động điền 6 trường audit trên mọi bản ghi.<br>- Xóa mềm chuyển cờ `deletedAt`, dữ liệu lịch sử được bảo toàn toàn vẹn. |
+| **US-CAMPUS-01** | Quản lý Đào tạo | Quản lý cơ sở đào tạo và danh mục phòng học | - Thêm/sửa/xóa mềm cơ sở chi nhánh và phòng học (Lab PC, Lý thuyết, Sức chứa). |
+| **US-ROOM-01** | Quản trị / Giáo vụ | Chống trùng lịch xếp phòng học tự động | - Khi lưu lịch học, hệ thống chặn lưu nếu phòng học đã có lớp khác học cùng khung giờ giao thoa. |
+| **US-MAKEUP-01** | Điều phối viên | Lên lịch học bù ghép lớp song song cho học sinh vắng | - Chọn học sinh vắng buổi trước $\to$ hệ thống đề xuất các lớp song song có cùng chủ đề bài giảng $\to$ chọn lớp ghép và gửi thông báo cho học sinh/phụ huynh. |
+| **US-MAKEUP-02** | Điều phối viên | Lên lịch dạy bù 1-1 với Trợ giảng/Giáo viên | - Phân công Trợ giảng kèm bù 1-1 qua Meet hoặc tại phòng học $\to$ Trợ giảng xác nhận hoàn thành $\to$ cập nhật tiến độ học tập cho học viên. |
+| **US-QUIZ-01** | Học viên | Làm bài kiểm tra trắc nghiệm sinh đề tự động | - Hệ thống sinh đề ngẫu nhiên từ ngân hàng câu hỏi, xáo trộn đáp án.<br>- Tự động chấm điểm ngay khi nộp bài và đồng bộ vào Sổ điểm lớp. |
+| **US-CHURN-01** | Điều phối viên / Admin | Giám sát radar nguy cơ học sinh bỏ học | - Danh sách học sinh vắng 2 buổi liên tiếp hoặc thiếu 3 bài tập được đưa vào danh sách cảnh báo đỏ để CSKH liên hệ hỗ trợ kịp thời. |
+| **US-CONTRACT-01**| Học viên / Phụ huynh | Ký hợp đồng cam kết đào tạo điện tử | - Xem hợp đồng trực tuyến, ký xác nhận điện tử/OTP $\to$ tải file PDF có dấu mộc điện tử. |
+| **US-PDF-01** | Kế toán / Học viên | Tải biên lai thu học phí và chứng chỉ định dạng PDF | - Go PDF Engine sinh biên lai/chứng chỉ có mã QR xác thực trong dưới 1 giây. |
+| **US-BACKUP-01** | Hệ thống / DevOps | Sao lưu CSDL tự động hàng ngày lên Cloud Storage | - Cron 02:00 sáng tự động dump CSDL, mã hóa AES-256 và lưu trữ an toàn. |
 
 
 

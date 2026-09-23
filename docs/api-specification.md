@@ -2,7 +2,7 @@
 
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
 > **Tài liệu:** `docs/api-specification.md`  
-> **Phiên bản:** 2.2.0 (Chuẩn hóa Go 1.23+ / `gmhafiz/go8` Layered Architecture, Chi Router, Go Struct DTOs & Toàn bộ Swagger/OpenAPI Comments)  
+> **Phiên bản:** 2.3.0 (Chuẩn hóa Go 1.23+ / `gmhafiz/go8` Layered Architecture, Chi Router, Go Struct DTOs, bổ sung Campus, Make-up Scheduling, Quiz Bank & Executive Analytics)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
@@ -1319,6 +1319,419 @@ type AuditLogItemResponse struct {
 	DiffJSON     *string   `json:"diffJson,omitempty"`
 	IPAddress    *string   `json:"ipAddress,omitempty" example:"14.226.24.12"`
 	CreatedAt    time.Time `json:"createdAt" example:"2026-10-25T14:30:00Z"`
+}
+```
+
+---
+
+### Phân Hệ 13: Quản Lý Cơ Sở, Phòng Học & Chống Trùng Lịch (`internal/domain/campus`)
+
+#### 13.1 `GET /api/v1/campuses` - Danh sách chi nhánh cơ sở đào tạo
+
+```go
+package handler
+
+import (
+	"net/http"
+	"backend/internal/domain/campus/dto"
+	"backend/pkg/response"
+)
+
+// ListCampuses godoc
+// @Summary Danh sách chi nhánh cơ sở đào tạo
+// @Description Lấy toàn bộ danh sách các cơ sở / chi nhánh đang hoạt động của trung tâm
+// @Tags Campus & Room
+// @Accept json
+// @Produce json
+// @Success 200 {object} response.Envelope{data=[]dto.CampusResponse} "Lấy danh sách thành công"
+// @Failure 500 {object} response.Envelope "Lỗi nội bộ máy chủ"
+// @Router /api/v1/campuses [get]
+func (h *CampusHandler) ListCampuses(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.ListCampuses
+}
+```
+
+#### 13.2 `POST /api/v1/campuses` - Tạo mới cơ sở chi nhánh
+
+```go
+// CreateCampus godoc
+// @Summary Tạo mới cơ sở đào tạo
+// @Description Thêm một chi nhánh trung tâm mới với thông tin địa chỉ và hotline
+// @Tags Campus & Room
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.CreateCampusRequest true "Thông tin cơ sở đào tạo"
+// @Success 201 {object} response.Envelope{data=dto.CampusResponse} "Tạo cơ sở thành công"
+// @Failure 400 {object} response.Envelope "Dữ liệu không hợp lệ hoặc mã cơ sở đã tồn tại"
+// @Failure 401 {object} response.Envelope "Chưa xác thực danh tính"
+// @Failure 403 {object} response.Envelope "Không có quyền quản trị cơ sở"
+// @Router /api/v1/campuses [post]
+func (h *CampusHandler) CreateCampus(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.CreateCampus
+}
+```
+
+#### 13.3 `GET /api/v1/rooms/conflicts` - Kiểm tra xung đột phòng học (Room Conflict Guard)
+
+```go
+// CheckRoomConflicts godoc
+// @Summary Kiểm tra xung đột lịch phòng học
+// @Description Kiểm tra xem phòng học có bị trùng lịch với ca học nào khác trong khoảng thời gian chỉ định hay không
+// @Tags Campus & Room
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param roomId query string true "Mã định danh phòng học (UUID)"
+// @Param date query string true "Ngày cần kiểm tra (YYYY-MM-DD)" example("2026-10-15")
+// @Param startTime query string true "Giờ bắt đầu (HH:mm)" example("19:30")
+// @Param endTime query string true "Giờ kết thúc (HH:mm)" example("21:30")
+// @Param excludeSessionId query string false "ID buổi học loại trừ khi đang sửa lịch (UUID)"
+// @Success 200 {object} response.Envelope{data=dto.RoomConflictCheckResponse} "Kiểm tra hoàn tất (hasConflict: true/false)"
+// @Failure 400 {object} response.Envelope "Tham số truy vấn không hợp lệ"
+// @Router /api/v1/rooms/conflicts [get]
+func (h *CampusHandler) CheckRoomConflicts(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.CheckRoomConflicts
+}
+```
+
+---
+
+### Phân Hệ 14: Lên Lịch Học Bù & Dạy Bù Cho Học Sinh Vắng (`internal/domain/makeup`)
+
+#### 14.1 `GET /api/v1/makeup-sessions` - Danh sách ca học bù / dạy bù
+
+```go
+package handler
+
+import (
+	"net/http"
+	"backend/internal/domain/makeup/dto"
+	"backend/pkg/response"
+)
+
+// ListMakeupSessions godoc
+// @Summary Danh sách ca học bù / dạy bù
+// @Description Lấy danh sách các lịch học bù cho học sinh vắng, hỗ trợ lọc theo học sinh, lớp, trạng thái và ngày học
+// @Tags Make-up Class
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param studentId query string false "Lọc theo ID học sinh (UUID)"
+// @Param classId query string false "Lọc theo ID lớp học (UUID)"
+// @Param status query string false "Trạng thái (SCHEDULED, ATTENDED, ABSENT, CANCELLED)"
+// @Param page query int false "Số trang" default(1)
+// @Param limit query int false "Số bản ghi mỗi trang" default(20)
+// @Success 200 {object} response.Envelope{data=[]dto.MakeupSessionItemResponse} "Lấy danh sách thành công"
+// @Failure 401 {object} response.Envelope "Chưa xác thực"
+// @Router /api/v1/makeup-sessions [get]
+func (h *MakeupHandler) ListMakeupSessions(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.ListMakeupSessions
+}
+```
+
+#### 14.2 `POST /api/v1/makeup-sessions` - Lên lịch học bù ghép lớp hoặc kèm 1-1
+
+```go
+// CreateMakeupSession godoc
+// @Summary Lên lịch học bù cho học sinh vắng
+// @Description Điều phối viên tạo lịch học bù cho học sinh đã vắng buổi trước (chọn Ghép Lớp Song Song hoặc Kèm 1-1 với GV/TA)
+// @Tags Make-up Class
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.CreateMakeupSessionRequest true "Thông tin sắp xếp ca học bù"
+// @Success 201 {object} response.Envelope{data=dto.MakeupSessionItemResponse} "Lên lịch học bù thành công"
+// @Failure 400 {object} response.Envelope "Dữ liệu không hợp lệ hoặc trùng lịch phòng/giáo viên"
+// @Failure 403 {object} response.Envelope "Không có quyền xếp lịch bù"
+// @Router /api/v1/makeup-sessions [post]
+func (h *MakeupHandler) CreateMakeupSession(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.CreateMakeupSession
+}
+```
+
+#### 14.3 `PUT /api/v1/makeup-sessions/{id}/attend` - Xác nhận tham gia & Đồng bộ chuyên cần
+
+```go
+// MarkMakeupAttended godoc
+// @Summary Điểm danh buổi học bù & Đồng bộ chuyên cần
+// @Description Giáo viên hoặc Trợ giảng xác nhận học sinh đã tham gia buổi học bù, hệ thống tự động cập nhật cờ bù buổi học gốc
+// @Tags Make-up Class
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Mã định danh ca học bù (UUID)"
+// @Param request body dto.MarkMakeupAttendedRequest true "Ghi chú nhận xét buổi học bù"
+// @Success 200 {object} response.Envelope{data=dto.MakeupSessionItemResponse} "Ghi nhận tham gia thành công"
+// @Failure 404 {object} response.Envelope "Không tìm thấy ca học bù"
+// @Router /api/v1/makeup-sessions/{id}/attend [put]
+func (h *MakeupHandler) MarkMakeupAttended(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.MarkMakeupAttended
+}
+```
+
+---
+
+### Phân Hệ 15: Khảo Thí & Ngân Hàng Đề Thi Trắc Nghiệm Tự Động (`internal/domain/quiz`)
+
+#### 15.1 `POST /api/v1/quizzes/generate` - Sinh đề thi ngẫu nhiên từ ngân hàng câu hỏi
+
+```go
+package handler
+
+import (
+	"net/http"
+	"backend/internal/domain/quiz/dto"
+	"backend/pkg/response"
+)
+
+// GenerateQuiz godoc
+// @Summary Sinh đề thi ngẫu nhiên từ ngân hàng câu hỏi
+// @Description Tự động rút ngẫu nhiên các câu hỏi theo phân bố cấp độ (Dễ, Trung bình, Khó) từ ngân hàng đề của môn học
+// @Tags Quizzes & Question Bank
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.GenerateQuizRequest true "Cấu hình sinh đề thi"
+// @Success 201 {object} response.Envelope{data=dto.QuizDetailResponse} "Sinh đề thi thành công"
+// @Failure 400 {object} response.Envelope "Số lượng câu hỏi trong ngân hàng không đủ theo yêu cầu"
+// @Router /api/v1/quizzes/generate [post]
+func (h *QuizHandler) GenerateQuiz(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.GenerateQuiz
+}
+```
+
+#### 15.2 `POST /api/v1/quizzes/{id}/submit` - Nộp bài thi trắc nghiệm & Chấm điểm tự động
+
+```go
+// SubmitQuizAttempt godoc
+// @Summary Nộp bài thi trắc nghiệm & Chấm điểm tức thì
+// @Description Học viên nộp bài làm, hệ thống tự động tính điểm theo đáp án chuẩn, trả kết quả và đồng bộ Sổ điểm lớp học
+// @Tags Quizzes & Question Bank
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Mã bài thi quiz (UUID)"
+// @Param request body dto.SubmitQuizAttemptRequest true "Danh sách câu trả lời của học viên"
+// @Success 200 {object} response.Envelope{data=dto.QuizAttemptResultResponse} "Chấm điểm thành công"
+// @Failure 400 {object} response.Envelope "Bài thi đã quá thời gian làm bài hoặc hết lượt thi"
+// @Router /api/v1/quizzes/{id}/submit [post]
+func (h *QuizHandler) SubmitQuizAttempt(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.SubmitQuizAttempt
+}
+```
+
+---
+
+### Phân Hệ 16: Trung Tâm Điều Hành & Radar Cảnh Báo Nguy Cơ Bỏ Học (`internal/domain/analytics`)
+
+#### 16.1 `GET /api/v1/admin/analytics/kpis` - Báo cáo chỉ số điều hành Real-time
+
+```go
+package handler
+
+import (
+	"net/http"
+	"backend/internal/domain/analytics/dto"
+	"backend/pkg/response"
+)
+
+// GetExecutiveKPIs godoc
+// @Summary Chỉ số điều hành tổng quan trung tâm (Real-time KPIs)
+// @Description Báo cáo doanh thu, sĩ số học viên đang hoạt động, tỷ lệ chuyên cần và số lớp đang mở
+// @Tags Executive Analytics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param period query string false "Kỳ phân tích (month, quarter, year)" default("month")
+// @Success 200 {object} response.Envelope{data=dto.ExecutiveKPIsResponse} "Lấy dữ liệu KPI thành công"
+// @Failure 403 {object} response.Envelope "Chỉ dành cho Ban Giám đốc và Super Admin"
+// @Router /api/v1/admin/analytics/kpis [get]
+func (h *AnalyticsHandler) GetExecutiveKPIs(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.GetExecutiveKPIs
+}
+```
+
+#### 16.2 `GET /api/v1/admin/analytics/churn-risk` - Radar cảnh báo học sinh nguy cơ thôi học
+
+```go
+// GetChurnRiskRadar godoc
+// @Summary Radar cảnh báo nguy cơ học sinh bỏ học (Churn Radar)
+// @Description Quét danh sách học viên vắng 2 buổi liên tiếp, chuyên cần dưới 70% hoặc thiếu 3 bài tập về nhà
+// @Tags Executive Analytics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param classId query string false "Lọc theo lớp học cụ thể (UUID)"
+// @Param campusId query string false "Lọc theo cơ sở chi nhánh (UUID)"
+// @Success 200 {object} response.Envelope{data=[]dto.ChurnRiskStudentResponse} "Lấy danh sách cảnh báo thành công"
+// @Router /api/v1/admin/analytics/churn-risk [get]
+func (h *AnalyticsHandler) GetChurnRiskRadar(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.GetChurnRiskRadar
+}
+```
+
+#### 16.3 `GET /api/v1/admin/analytics/teacher-matrix` - Ma trận xếp hạng hiệu quả giảng viên
+
+```go
+// GetTeacherMatrix godoc
+// @Summary Ma trận đánh giá hiệu quả giảng viên (Teacher Performance Matrix)
+// @Description Xếp hạng giảng viên theo điểm đánh giá học viên, tỷ lệ đúng giờ và tốc độ trả bài chấm điểm
+// @Tags Executive Analytics
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param period query string false "Tháng tính toán (YYYY-MM)" example("2026-10")
+// @Success 200 {object} response.Envelope{data=[]dto.TeacherMatrixItemResponse} "Lấy ma trận thành công"
+// @Router /api/v1/admin/analytics/teacher-matrix [get]
+func (h *AnalyticsHandler) GetTeacherMatrix(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.GetTeacherMatrix
+}
+```
+
+#### DTO Structs Bổ Sung (Campus, Make-up, Quiz & Analytics)
+
+```go
+package dto
+
+import (
+	"time"
+	"github.com/google/uuid"
+)
+
+type CampusResponse struct {
+	ID        uuid.UUID `json:"id" example:"c1eebc99-9c0b-4ef8-bb6d-6bb9bd380001"`
+	Code      string    `json:"code" example:"CS_CAUGIAY"`
+	Name      string    `json:"name" example:"Cơ sở Cầu Giấy - Hà Nội"`
+	Address   string    `json:"address" example:"Tòa nhà Công nghệ, Dịch Vọng Hậu, Cầu Giấy"`
+	Phone     *string   `json:"phone,omitempty" example:"024 7300 8888"`
+	Email     *string   `json:"email,omitempty" example:"caugiay@lms.edu.vn"`
+	IsActive  bool      `json:"isActive" example:"true"`
+	RoomCount int       `json:"roomCount" example:"6"`
+}
+
+type CreateCampusRequest struct {
+	Code    string  `json:"code" validate:"required,min=3" example:"CS_HADONG"`
+	Name    string  `json:"name" validate:"required,min=3" example:"Cơ sở Hà Đông"`
+	Address string  `json:"address" validate:"required" example:"Số 10 Trần Phú, Hà Đông, Hà Nội"`
+	Phone   *string `json:"phone,omitempty" example:"024 7300 9999"`
+	Email   *string `json:"email,omitempty" example:"hadong@lms.edu.vn"`
+}
+
+type RoomConflictCheckResponse struct {
+	HasConflict  bool      `json:"hasConflict" example:"true"`
+	ConflictMsg  *string   `json:"conflictMsg,omitempty" example:"Phòng LAB-201 đã được đặt bởi lớp FE-K31 (19:30 - 21:30)"`
+	ConflictingClass *string `json:"conflictingClass,omitempty" example:"FE-K31"`
+}
+
+type CreateMakeupSessionRequest struct {
+	OriginalSessionID uuid.UUID  `json:"originalSessionId" validate:"required" example:"s1eebc99-9c0b-4ef8-bb6d-6bb9bd380111"`
+	StudentID         uuid.UUID  `json:"studentId" validate:"required" example:"u1eebc99-9c0b-4ef8-bb6d-6bb9bd380222"`
+	MakeupType        string     `json:"makeupType" validate:"required,oneof=PARALLEL_CLASS TUTOR_1ON1" example:"PARALLEL_CLASS"`
+	TargetClassID     *uuid.UUID `json:"targetClassId,omitempty" example:"c2eebc99-9c0b-4ef8-bb6d-6bb9bd380333"`
+	TargetSessionID   *uuid.UUID `json:"targetSessionId,omitempty" example:"s2eebc99-9c0b-4ef8-bb6d-6bb9bd380444"`
+	InstructorID      *uuid.UUID `json:"instructorId,omitempty"`
+	ScheduledDate     string     `json:"scheduledDate" validate:"required" example:"2026-10-18"`
+	StartTime         string     `json:"startTime" validate:"required" example:"19:30"`
+	EndTime           string     `json:"endTime" validate:"required" example:"21:30"`
+	RoomID            *uuid.UUID `json:"roomId,omitempty"`
+	MeetURL           *string    `json:"meetUrl,omitempty"`
+	CoordinatorNotes  *string    `json:"coordinatorNotes,omitempty" example:"Học sinh bận thi giữa kỳ trường đại học, xếp ghép lớp FE-K33"`
+}
+
+type MakeupSessionItemResponse struct {
+	ID                uuid.UUID  `json:"id" example:"m1eebc99-9c0b-4ef8-bb6d-6bb9bd380555"`
+	OriginalSessionID uuid.UUID  `json:"originalSessionId"`
+	OriginalTopic     string     `json:"originalTopic" example:"Buổi 4: Goroutines & Channels"`
+	StudentID         uuid.UUID  `json:"studentId"`
+	StudentName       string     `json:"studentName" example:"Nguyễn Hoàng Nam"`
+	MakeupType        string     `json:"makeupType" example:"PARALLEL_CLASS"`
+	ScheduledDate     string     `json:"scheduledDate" example:"2026-10-18"`
+	TimeRange         string     `json:"timeRange" example:"19:30 - 21:30"`
+	Status            string     `json:"status" example:"SCHEDULED"`
+	InstructorName    *string    `json:"instructorName,omitempty" example:"ThS. Vũ Hải Đăng"`
+}
+
+type MarkMakeupAttendedRequest struct {
+	TeacherNotes string `json:"teacherNotes" validate:"required" example:"Học sinh nắm vững kiến thức channel và hoàn thành bài lab tại lớp"`
+}
+
+type GenerateQuizRequest struct {
+	CourseID        uuid.UUID  `json:"courseId" validate:"required"`
+	ClassID         *uuid.UUID `json:"classId,omitempty"`
+	Title           string     `json:"title" validate:"required" example:"Bài kiểm tra trắc nghiệm số 1: Go Fundamentals"`
+	BankID          uuid.UUID  `json:"bankId" validate:"required"`
+	EasyCount       int        `json:"easyCount" validate:"min=0" example:"5"`
+	MediumCount     int        `json:"mediumCount" validate:"min=0" example:"10"`
+	HardCount       int        `json:"hardCount" validate:"min=0" example:"5"`
+	DurationMinutes int        `json:"durationMinutes" validate:"min=5" example:"20"`
+	PassingScore    float64    `json:"passingScore" validate:"min=0,max=100" example:"60.0"`
+}
+
+type QuizDetailResponse struct {
+	ID              uuid.UUID              `json:"id" example:"q1eebc99-9c0b-4ef8-bb6d-6bb9bd380777"`
+	Title           string                 `json:"title" example:"Bài kiểm tra trắc nghiệm số 1: Go Fundamentals"`
+	DurationMinutes int                    `json:"durationMinutes" example:"20"`
+	TotalQuestions  int                    `json:"totalQuestions" example:"20"`
+	Questions       []QuizQuestionItemView `json:"questions"`
+}
+
+type QuizQuestionItemView struct {
+	ID           uuid.UUID `json:"id"`
+	QuestionType string    `json:"questionType" example:"SINGLE_CHOICE"`
+	Content      string    `json:"content" example:"Từ khóa nào trong Go dùng để khởi chạy một Goroutine?"`
+	Options      []string  `json:"options" example:"[\"go\", \"async\", \"thread\", \"routine\"]"`
+	Points       float64   `json:"points" example:"1.0"`
+}
+
+type SubmitQuizAttemptRequest struct {
+	AttemptID uuid.UUID                     `json:"attemptId" validate:"required"`
+	Answers   []QuizStudentAnswerSubmission `json:"answers" validate:"required,min=1"`
+}
+
+type QuizStudentAnswerSubmission struct {
+	QuestionID    uuid.UUID `json:"questionId" validate:"required"`
+	StudentAnswer []string  `json:"studentAnswer" validate:"required" example:"[\"go\"]"`
+}
+
+type QuizAttemptResultResponse struct {
+	AttemptID   uuid.UUID `json:"attemptId"`
+	TotalScore  float64   `json:"totalScore" example:"85.0"`
+	IsPassed    bool      `json:"isPassed" example:"true"`
+	CorrectCount int      `json:"correctCount" example:"17"`
+	TotalCount   int      `json:"totalCount" example:"20"`
+	SubmittedAt time.Time `json:"submittedAt"`
+}
+
+type ExecutiveKPIsResponse struct {
+	MonthlyRevenue     float64 `json:"monthlyRevenue" example:"452000000"`
+	RevenueGrowthRate  float64 `json:"revenueGrowthRate" example:"14.8"`
+	ActiveStudents     int     `json:"activeStudents" example:"284"`
+	ActiveClasses      int     `json:"activeClasses" example:"16"`
+	AvgAttendanceRate  float64 `json:"avgAttendanceRate" example:"91.5"`
+	CompletionRate     float64 `json:"completionRate" example:"88.2"`
+}
+
+type ChurnRiskStudentResponse struct {
+	StudentID          uuid.UUID `json:"studentId"`
+	StudentCode        string    `json:"studentCode" example:"HV-2026-042"`
+	StudentName        string    `json:"studentName" example:"Lê Hoàng Long"`
+	ClassName          string    `json:"className" example:"FE-K32"`
+	RiskLevel          string    `json:"riskLevel" example:"HIGH"` // HIGH, MEDIUM
+	ConsecutiveAbsence int       `json:"consecutiveAbsence" example:"2"`
+	AttendanceRate     float64   `json:"attendanceRate" example:"62.5"`
+	MissingHomeworks   int       `json:"missingHomeworks" example:"3"`
+	CoordinatorNotes   *string   `json:"coordinatorNotes,omitempty"`
+}
+
+type TeacherMatrixItemResponse struct {
+	TeacherID        uuid.UUID `json:"teacherId"`
+	TeacherName      string    `json:"teacherName" example:"ThS. Nguyễn Văn Tuấn"`
+	RatingScore      float64   `json:"ratingScore" example:"4.85"`
+	TotalFeedbacks   int       `json:"totalFeedbacks" example:"142"`
+	OnTimeRate       float64   `json:"onTimeRate" example:"98.2"`
+	LateSessionsCount int      `json:"lateSessionsCount" example:"1"`
+	AvgGradingHours  float64   `json:"avgGradingHours" example:"18.5"` // Thời gian trả bài trung bình (giờ)
 }
 ```
 
