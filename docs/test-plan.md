@@ -112,6 +112,19 @@ flowchart TD
 
 ---
 
+### Nhóm 8: Quản Trị Hệ Thống, Giao Diện Website & Giám Sát OpenTelemetry (Admin & OTel Observability)
+
+| Mã Test Case | Phân hệ | Mô tả kịch bản | Các bước thực hiện | Kết quả mong đợi | Mức độ |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **TC-ADMIN-WEB-01** | Website | Super Admin tùy biến logo, favicon và màu sắc Header/Footer | 1. Đăng nhập tài khoản Super Admin.<br>2. Gọi `PUT /api/v1/admin/settings/website` cập nhật màu Header, logo mới.<br>3. Client Nuxt UI gọi `GET /api/v1/settings/website`. | CSDL lưu cấu hình thương hiệu mới; Client nhận đúng mã màu và đường dẫn logo mới; Giao diện cập nhật tức thì. | **P0** |
+| **TC-ADMIN-USER-01** | User Mgmt | Super Admin tạo nhân sự mới, gán đa vai trò và khóa tài khoản | 1. Tạo user mới với vai trò `TEACHER` và `ACADEMIC_MANAGER`.<br>2. Kiểm tra danh sách permissions.<br>3. Gọi API khóa tài khoản (`isActive = false`). | User đăng nhập được và có đầy đủ quyền của cả 2 vai trò; Sau khi khóa, đăng nhập lập tức bị từ chối 401/403. | **P0** |
+| **TC-AUDIT-01** | Audit Logs | Tự động ghi nhật ký kiểm toán khi thực hiện hành động nhạy cảm | 1. Admin bấm duyệt bảng lương giáo viên hoặc sửa điểm BTVN.<br>2. Kiểm tra bảng `system_audit_logs`. | Tự động sinh bản ghi log lưu rõ `actorId`, `action: "PAYROLL_APPROVE"`, `diffJson`, IP và thời gian thao tác. | **P1** |
+| **TC-OTEL-01** | OTel Tracing | Truy vết phân tán (Distributed Tracing) qua `otelchi` và `otelsql` | 1. Khởi chạy `task infra:up` và `task dev`.<br>2. Gửi request `POST /api/v1/auth/login`.<br>3. Mở Jaeger (`http://localhost:16686`). | Trace hiển thị sơ đồ thác nước: Root span từ Chi router (`otelchi`) và Child span từ truy vấn PostgreSQL (`otelsql`). | **P0** |
+| **TC-OTEL-02** | OTel Logging | Tương quan vết giữa Log và Trace (Trace-Log Correlation) | 1. Gửi request API xử lý nghiệp vụ bất kỳ.<br>2. Đọc log xuất ra từ `log/slog`. | Mọi dòng log đều chứa trường `trace_id` và `span_id` trùng khớp với Trace context của request đó. | **P0** |
+| **TC-OTEL-03** | OTel Metrics | Thu thập chỉ số hiệu năng và nghiệp vụ qua Prometheus | 1. Gửi 50 requests vào các API endpoints.<br>2. Mở Prometheus (`http://localhost:9090`).<br>3. Truy vấn `http_server_requests_total`. | Prometheus hiển thị đúng số lượng request phân loại theo method, route template và status code. | **P1** |
+
+---
+
 ## 3. Lệnh Chạy Bộ Kiểm Thử Tự Động (Nuxt UI + Go-chi Stack)
 
 ```bash

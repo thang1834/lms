@@ -228,6 +228,43 @@ type Submission struct {
 	Status       string     `json:"status" db:"status"` // SUBMITTED, GRADED, LATE
 	AuditFields
 }
+
+// 10. Cấu hình Website thương hiệu & Nhật ký kiểm toán (Website Settings & Audit Logs)
+type WebsiteSettings struct {
+	ID              uuid.UUID  `json:"id" db:"id"`
+	SiteTitle       string     `json:"siteTitle" db:"site_title"`
+	SiteTagline     *string    `json:"siteTagline,omitempty" db:"site_tagline"`
+	LogoURL         *string    `json:"logoUrl,omitempty" db:"logo_url"`
+	LogoDarkURL     *string    `json:"logoDarkUrl,omitempty" db:"logo_dark_url"`
+	FaviconURL      *string    `json:"faviconUrl,omitempty" db:"favicon_url"`
+	HeaderBgColor   string     `json:"headerBgColor" db:"header_bg_color"`
+	HeaderTextColor string     `json:"headerTextColor" db:"header_text_color"`
+	FooterBgColor   string     `json:"footerBgColor" db:"footer_bg_color"`
+	FooterTextColor string     `json:"footerTextColor" db:"footer_text_color"`
+	FooterCopyright *string    `json:"footerCopyright,omitempty" db:"footer_copyright"`
+	PrimaryColor    string     `json:"primaryColor" db:"primary_color"`
+	BannerURL       *string    `json:"bannerUrl,omitempty" db:"banner_url"`
+	ContactEmail    *string    `json:"contactEmail,omitempty" db:"contact_email"`
+	ContactPhone    *string    `json:"contactPhone,omitempty" db:"contact_phone"`
+	Hotline         *string    `json:"hotline,omitempty" db:"hotline"`
+	Address         *string    `json:"address,omitempty" db:"address"`
+	SocialLinks     *string    `json:"socialLinks,omitempty" db:"social_links"` // JSON string
+	SeoMeta         *string    `json:"seoMeta,omitempty" db:"seo_meta"`         // JSON string
+	AuditFields
+}
+
+type SystemAuditLog struct {
+	ID           uuid.UUID  `json:"id" db:"id"`
+	ActorID      uuid.UUID  `json:"actorId" db:"actor_id"`
+	ActorEmail   string     `json:"actorEmail" db:"actor_email"`
+	Action       string     `json:"action" db:"action"`
+	ResourceType string     `json:"resourceType" db:"resource_type"`
+	ResourceID   string     `json:"resourceId" db:"resource_id"`
+	DiffJSON     *string    `json:"diffJson,omitempty" db:"diff_json"`
+	IPAddress    *string    `json:"ipAddress,omitempty" db:"ip_address"`
+	UserAgent    *string    `json:"userAgent,omitempty" db:"user_agent"`
+	CreatedAt    time.Time  `json:"createdAt" db:"created_at"`
+}
 ```
 
 ---
@@ -237,26 +274,31 @@ type Submission struct {
 Toàn bộ các tác vụ backend được tự động hóa qua `Taskfile.yml` theo chuẩn blueprint `gmhafiz/go8`:
 
 ```bash
-# 1. Chạy Backend API (Go-chi + Hot reload Air)
+# 1. Khởi chạy cụm hạ tầng OpenTelemetry Observability (Prometheus, Jaeger, Loki, Grafana)
 cd backend
+task infra:up
+# Truy cập Grafana Dashboard: http://localhost:3300 (admin/admin)
+# Truy cập Jaeger Traces: http://localhost:16686
+
+# 2. Chạy Backend API (Go-chi + Hot reload Air)
 task dev
 
-# 2. Quản lý CSDL (Goose Migrations)
+# 3. Quản lý CSDL (Goose Migrations)
 task migrate
 
-# 3. Tự động sinh tài liệu Swagger/OpenAPI từ Go Handlers
+# 4. Tự động sinh tài liệu Swagger/OpenAPI từ Go Handlers
 task swagger
 
-# 4. Kiểm tra mã nguồn, linting & quét lỗ hổng bảo mật
+# 5. Kiểm tra mã nguồn, linting & quét lỗ hổng bảo mật
 task check
 task test
 
-# 5. Kiểm tra mã nguồn Frontend Nuxt UI (Vue 3 / TypeScript)
+# 6. Kiểm tra mã nguồn Frontend Nuxt UI (Vue 3 / TypeScript)
 cd ../frontend
 npm run typecheck
 npm run lint
 
-# 6. Kiểm tra tính toàn vẹn AG Kit
+# 7. Kiểm tra tính toàn vẹn AG Kit
 cd ..
 python .agents/scripts/validate_kit.py
 ```
