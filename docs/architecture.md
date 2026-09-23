@@ -97,7 +97,61 @@ graph TD
     RestrictedPlayer -.-> VideoD
 ```
 
+---
 
+### 1.1 Kiến Trúc Giám Sát Toàn Diện OpenTelemetry (Logs, Metrics, Traces - Chuẩn `gmhafiz/go8`)
+
+Hệ thống tích hợp bộ công cụ chuẩn công nghiệp **OpenTelemetry (OTel)** v1.30+ kết hợp cùng cụm hạ tầng **Loki + Prometheus + Jaeger/Tempo + Grafana (Cổng 3300)**:
+
+```mermaid
+flowchart TD
+    subgraph AppRuntime ["1. Ứng Dụng Go Backend (Instrumented)"]
+        Router["go-chi/chi v5 + otelchi.Middleware"]
+        Repo["PostgreSQL Client + otelsql wrapper"]
+        Slog["Structured Logger (log/slog + OTel Handler)"]
+        Worker["Goroutine Background Workers"]
+    end
+
+    subgraph OTelCollectorLayer ["2. Bộ Thu Thập & Chuyển Tiếp (OTel Collector)"]
+        OTLPGateway["OTLP Receiver (gRPC :4317 / HTTP :4318)"]
+        Processor["Batch & Attribute Processor (Enrich Service, Env)"]
+        Router -->|Traces & RED Metrics| OTLPGateway
+        Repo -->|DB Spans & Pool Metrics| OTLPGateway
+        Worker -->|Cron Traces & KPI Metrics| OTLPGateway
+        Slog -.->|Logs with trace_id| OTLPGateway
+        OTLPGateway --> Processor
+    end
+
+    subgraph StorageLayer ["3. Tầng Lưu Trữ Chuyên Dụng (docker-compose-infra.yml)"]
+        Prometheus["Prometheus (Port 9090 - Metrics)"]
+        Jaeger["Jaeger / Tempo (Port 16686 / 3200 - Traces)"]
+        Loki["Grafana Loki (Port 3100 - Structured Logs)"]
+        Processor --> Prometheus
+        Processor --> Jaeger
+        Processor --> Loki
+    end
+
+    subgraph Visualization ["4. Giao Diện Giám Sát Hợp Nhất"]
+        Grafana["Grafana Dashboard (Port 3300)"]
+        Prometheus --> Grafana
+        Jaeger --> Grafana
+        Loki --> Grafana
+    end
+```
+
+#### Quy Chuẩn Ba Trụ Cột Observability:
+1. **Logs (Structured Logging & Trace-Log Correlation):**
+   - Sử dụng thư viện chuẩn Go 1.21+ `log/slog` xuất định dạng JSON.
+   - Handler tự động trích xuất `trace_id` và `span_id` từ `context.Context` để nhúng vào từng dòng log.
+   - Cho phép điều hướng 1-click **"Jump to Logs"** từ trace bị lỗi sang log chi tiết và ngược lại trên Grafana Explore.
+2. **Metrics (Ứng Dụng, CSDL & Chỉ Số Nghiệp Vụ LMS):**
+   - **RED Metrics:** `http_server_requests_total`, `http_server_request_duration_seconds` (p50, p90, p99), `http_server_active_requests`.
+   - **Database Pool Metrics:** `db_client_connections_open`, `db_client_connections_idle`, `db_client_connections_wait_duration`.
+   - **Chỉ số kinh doanh LMS:** `lms_student_active_sessions`, `lms_video_heartbeats_total`, `lms_attendance_checkin_total`, `lms_vietqr_checkout_total`, `lms_teacher_late_alerts_total`.
+3. **Traces (Distributed Tracing):**
+   - Tự động sinh Root Span cho HTTP Inbound qua `otelchi.Middleware` (chuẩn W3C `traceparent`).
+   - Tự động sinh Child Spans cho câu truy vấn PostgreSQL qua `otelsql.WrapDB`.
+   - Thủ công gắn Child Spans cho logic nặng: `payroll.calculate_net_salary`, `schedule.generate_recurrence_sessions`, `vietqr.generate_dynamic_payload`.
 
 ---
 
