@@ -119,6 +119,11 @@ erDiagram
     ParentProfile ||--o{ ParentStudent : connects
     StudentProfile ||--o{ ParentStudent : belongs_to
     
+    Subject ||--o{ Course : categorizes
+    SalaryGrade ||--o{ TeacherProfile : defines_grade
+    TeacherProfile ||--o{ TeacherPayroll : receives_monthly_salary
+    SalaryGrade ||--o{ TeacherPayroll : applies_hourly_rate
+
     Course ||--o{ Module : contains
     Module ||--o{ Lesson : contains
     Lesson ||--o{ Material : includes
@@ -158,16 +163,19 @@ erDiagram
     NotificationTemplate ||--o{ NotificationLog : formats
     User ||--o{ NotificationLog : receives
     
-    Class ||--o{ Assignment : assigns
+    Class ||--o{ Assignment : assigns_homework
     Assignment ||--o{ Material : attaches
-    Assignment ||--o{ Submission : receives
+    Assignment ||--o{ Submission : receives_class_submissions
     StudentProfile ||--o{ Submission : submits
     Submission ||--o{ GradeFeedback : grades
-    TeacherProfile ||--o{ GradeFeedback : evaluates
+    TeacherProfile ||--o{ GradeFeedback : evaluates_class_homework
     
     StudentProfile ||--o{ Certificate : awarded
     Course ||--o{ Certificate : certifies
     
+    Discount ||--o{ CourseDiscount : offers
+    Course ||--o{ CourseDiscount : applied_discount
+    Discount ||--o{ TuitionInvoice : discounts_amount
     StudentProfile ||--o{ TuitionInvoice : billed_to
     TuitionInvoice ||--o{ PaymentTransaction : settles
 ```
@@ -175,7 +183,21 @@ erDiagram
 
 ---
 
-### 2.2 Từ Điển Dữ Liệu Chi Tiết (Data Dictionary)
+### 2.2 Quy Chuẩn 6 Trường Audit & Chính Sách Soft Delete Bắt Buộc (Audit Fields & Soft Delete)
+
+> **Quy định bất biến:** 100% các bảng trong CSDL LMS bắt buộc phải có đầy đủ 6 trường audit:
+> - `createdAt` (`TIMESTAMPTZ DEFAULT now() NOT NULL`): Thời điểm tạo bản ghi.
+> - `createdBy` (`UUID`, Nullable, FK -> `users.id`): Người thực hiện tạo bản ghi.
+> - `updatedAt` (`TIMESTAMPTZ DEFAULT now() NOT NULL`): Thời điểm cập nhật bản ghi gần nhất.
+> - `updatedBy` (`UUID`, Nullable, FK -> `users.id`): Người thực hiện cập nhật gần nhất.
+> - `deletedAt` (`TIMESTAMPTZ`, Nullable): Thời điểm xóa mềm (`NULL` = bản ghi đang hoạt động).
+> - `deletedBy` (`UUID`, Nullable, FK -> `users.id`): Người thực hiện xóa mềm.
+>
+> **Chính sách Soft Delete:** Nghiêm cấm xóa vật lý (Hard DELETE) đối với tất cả bảng nghiệp vụ chính (`users`, `classes`, `class_sessions`, `courses`, `subjects`, `enrollments`, `tuition_invoices`, `assignments`, `submissions`, `teacher_profiles`, `salary_grades`, `teacher_payrolls`, `discounts`). Mọi query nghiệp vụ tự động lọc điều kiện `WHERE deleted_at IS NULL`.
+
+---
+
+### 2.3 Từ Điển Dữ Liệu Chi Tiết (Data Dictionary)
 
 #### Nhóm 1: Hệ Thống Phân Quyền Động Chuẩn RBAC (Core Dynamic RBAC)
 
@@ -187,27 +209,30 @@ erDiagram
    - `phone` (String, Nullable): Số điện thoại liên hệ.
    - `avatarUrl` (String, Nullable): Ảnh đại diện.
    - `isActive` (Boolean, Default `true`): Trạng thái kích hoạt.
-   - `createdAt`, `updatedAt` (Timestamp).
+   - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
 2. **`roles`** (Bảng quản lý vai trò):
    - `id` (UUID, PK).
-   - `code` (String, Unique): Mã định danh (ví dụ: `SUPER_ADMIN`, `ACADEMIC_MANAGER`, `CLASS_COORDINATOR`, `TEACHER`, `TA`, `STUDENT`, `PARENT`).
+   - `code` (String, Unique): Mã định danh (ví dụ: `SUPER_ADMIN`, `ACADEMIC_MANAGER`, `CLASS_COORDINATOR`, `TEACHER`, `TA`, `EXAMINER`, `STUDENT`, `PARENT`).
    - `name` (String): Tên hiển thị (ví dụ: "Quản lý Đào tạo / Giáo vụ trưởng", "Chuyên viên Vận hành & CSKH lớp").
    - `description` (String, Nullable): Mô tả quyền hạn.
    - `isSystem` (Boolean, Default `false`): Role hệ thống mặc định (không được xóa).
+   - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
 3. **`permissions`** (Bảng quản lý quyền hạn chi tiết - Granular Permissions):
    - `id` (UUID, PK).
-   - `code` (String, Unique): Mã quyền (ví dụ: `classes.create`, `classes.schedule`, `classes.reschedule`, `teachers.evaluate`, `attendance.record_student`, `attendance.record_teacher`, `students.care_notes`, `finance.manage_invoices`).
-   - `name` (String): Tên quyền (ví dụ: "Xếp thời khóa biểu lớp học", "Đánh giá chất lượng giáo viên").
-   - `module` (String): Phân hệ (ví dụ: `CLASSES`, `TEACHERS`, `ATTENDANCE`, `FINANCE`).
+   - `code` (String, Unique): Mã quyền (ví dụ: `classes.create`, `classes.schedule`, `classes.reschedule`, `teachers.evaluate`, `attendance.record_student`, `attendance.record_teacher`, `students.care_notes`, `finance.manage_invoices`, `payroll.manage`, `discounts.manage`).
+   - `name` (String): Tên quyền.
+   - `module` (String): Phân hệ (`CLASSES`, `TEACHERS`, `ATTENDANCE`, `FINANCE`, `PAYROLL`, `DISCOUNTS`).
    - `description` (String, Nullable).
+   - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
 4. **`role_permissions`** (Bảng trung gian N-N gán quyền cho vai trò):
    - `id` (UUID, PK).
    - `roleId` (UUID, FK -> `roles.id`).
    - `permissionId` (UUID, FK -> `permissions.id`).
    - Unique Constraint: `(roleId, permissionId)`.
+   - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
 5. **`user_roles`** (Bảng trung gian N-N gán vai trò cho người dùng):
    - `id` (UUID, PK).
@@ -216,62 +241,88 @@ erDiagram
    - `assignedAt` (Timestamp, Default `now()`).
    - `assignedBy` (UUID, Nullable, FK -> `users.id`): Người cấp quyền.
    - Unique Constraint: `(userId, roleId)`.
+   - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
 ---
 
-#### Nhóm 2: Hồ Sơ Người Dùng & Quan Hệ Gia Đình (Profiles)
+#### Nhóm 2: Hồ Sơ Người Dùng, Bậc Lương & Quan Hệ Gia Đình (Profiles & Salary Grades)
 
-6. **`teacher_profiles`**:
+6. **`salary_grades`** (Bậc lương & định mức thù lao giảng viên):
+   - `id` (UUID, PK).
+   - `code` (String, Unique): Mã bậc (ví dụ: `GRADE_INTERN_TA`, `GRADE_STANDARD`, `GRADE_SENIOR`, `GRADE_MASTER`).
+   - `name` (String): Tên bậc (ví dụ: "Trợ giảng / Tập sự", "Giảng viên chuẩn", "Giảng viên cao cấp", "Chuyên gia / Master").
+   - `baseHourlyRate` (Decimal): Đơn giá thù lao giờ dạy chuẩn (VNĐ/giờ).
+   - `overtimeMultiplier` (Decimal, Default `1.5`): Hệ số nhân ca tối hoặc cuối tuần.
+   - `kpiBonusRate` (Decimal, Default `0.1`): Tỷ lệ thưởng thêm nếu điểm KPI buổi học $\ge 4.5$ sao.
+   - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+7. **`teacher_profiles`**:
    - `id` (UUID, PK).
    - `userId` (UUID, FK -> `users.id`, Unique).
+   - `salaryGradeId` (UUID, FK -> `salary_grades.id`): Bậc lương áp dụng cho giảng viên.
    - `specialization` (String): Lĩnh vực chuyên môn (Frontend, Backend, Python AI, IELTS...).
    - `bio` (Text, Nullable): Kinh nghiệm & chứng chỉ.
-   - `hourlyRate` (Decimal): Đơn giá thù lao giờ dạy (VNĐ).
+   - `hourlyRate` (Decimal): Đơn giá thù lao giờ dạy thực tế (VNĐ - có thể override theo hợp đồng cá nhân).
    - `contractType` (Enum: `FULLTIME`, `PARTTIME`, `VISITING`).
    - `kpiRating` (Decimal, Default `5.0`): Điểm đánh giá trung bình từ học viên và giáo vụ.
+   - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
-7. **`examiner_profiles`** (Hội đồng Giám khảo / Chuyên gia phản biện đồ án):
+8. **`examiner_profiles`** (Hội đồng Giám khảo / Chuyên gia phản biện đồ án):
    - `id` (UUID, PK).
    - `userId` (UUID, FK -> `users.id`, Unique).
    - `title` (String): Chức danh / Học hàm (ví dụ: "Senior Solution Architect", "Tiến sĩ KHMT", "Giám khảo Trưởng").
    - `company` (String, Nullable): Tổ chức / Doanh nghiệp công tác.
    - `bio` (Text, Nullable): Kinh nghiệm chuyên môn và phản biện.
+   - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
-8. **`student_profiles`**:
+9. **`student_profiles`**:
    - `id` (UUID, PK).
    - `userId` (UUID, FK -> `users.id`, Unique).
    - `studentCode` (String, Unique): Mã học viên (ví dụ: `HV-2026-001`).
    - `dateOfBirth` (Date, Nullable).
    - `currentLevel` (String, Nullable).
+   - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
-9. **`parent_profiles`**:
-   - `id` (UUID, PK).
-   - `userId` (UUID, FK -> `users.id`, Unique).
-   - `address` (String, Nullable).
+10. **`parent_profiles`**:
+    - `id` (UUID, PK).
+    - `userId` (UUID, FK -> `users.id`, Unique).
+    - `address` (String, Nullable).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
-10. **`parent_students`**:
+11. **`parent_students`**:
     - `id` (UUID, PK).
     - `parentId` (UUID, FK -> `parent_profiles.id`).
     - `studentId` (UUID, FK -> `student_profiles.id`).
     - `relationship` (String): Bố, Mẹ, Người giám hộ.
     - Unique Constraint: `(parentId, studentId)`.
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
 ---
 
-#### Nhóm 3: Đào Tạo, Khóa Học & Lớp Học Đa Hình Thức (Courses & Classes)
+#### Nhóm 3: Đào Tạo, Khóa Học & Lớp Học Đa Hình Thức (Subjects, Courses & Classes)
 
-11. **`courses`**:
+12. **`subjects`** (Danh mục Môn học & Lĩnh vực đào tạo Động - Hỗ trợ CRUD):
     - `id` (UUID, PK).
+    - `code` (String, Unique): Mã môn học (ví dụ: `IT_DEV`, `LANG_ENGLISH`, `LANG_JAPANESE`, `DESIGN_UIUX`, `SOFT_SKILLS`).
+    - `name` (String): Tên môn học (ví dụ: "Công nghệ thông tin & Lập trình", "Tiếng Anh Giao tiếp & IELTS", "Thiết kế UI/UX").
+    - `description` (Text, Nullable): Giới thiệu môn học.
+    - `iconUrl` (String, Nullable): Đường dẫn icon hiển thị trên portal.
+    - `isActive` (Boolean, Default `true`).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+13. **`courses`**:
+    - `id` (UUID, PK).
+    - `subjectId` (UUID, FK -> `subjects.id`): Môn học / Lĩnh vực đào tạo (CRUD động).
     - `title` (String): Tên khóa học.
     - `slug` (String, Unique).
     - `description` (Text).
     - `courseType` (Enum: `SELF_PACED_ONLINE`, `INSTRUCTOR_LED`): Phân loại khóa học tự học (cấm tua video) hay lớp có giáo viên.
-    - `subjectType` (Enum: `IT`, `LANGUAGE`, `GENERAL`).
     - `thumbnailUrl` (String, Nullable).
     - `isFree` (Boolean, Default `false`): Khóa học miễn phí (học sinh đăng ký học ngay 1-click).
     - `price` (Decimal, Default `0`): Học phí niêm yết (nếu trả phí thì thanh toán VietQR động).
     - `enrollmentCount` (Int, Default `0`): Số lượng học viên đã đăng ký.
     - `isPublished` (Boolean, Default `false`).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
 12. **`gradebook_configs`** (Cấu hình trọng số điểm theo chuẩn Moodle):
     - `id` (UUID, PK).
@@ -404,17 +455,18 @@ erDiagram
     - `assignmentId` (UUID, FK -> `assignments.id`, Nullable).
     - `isPublic` (Boolean, Default `true`).
 
-21. **`assignments`**:
+21. **`assignments`** (Bài tập về nhà theo lớp học - Hỗ trợ giáo viên chấm bài trực tiếp trong lớp):
     - `id` (UUID, PK).
-    - `classId` (UUID, FK -> `classes.id`).
+    - `classId` (UUID, FK -> `classes.id`): Thuộc về một lớp học cụ thể, cho phép giáo viên quản lý danh sách BTVN và chấm bài tập của học sinh trong lớp.
     - `title` (String).
     - `description` (Text): Hướng dẫn đề bài Markdown.
     - `format` (Enum: `CODE_MONACO`, `GITHUB_REPO`, `FILE_UPLOAD`, `AUDIO_RECORDING`, `ESSAY`).
     - `allowedLanguage` (String, Default `"javascript"`).
     - `deadline` (Timestamp).
     - `maxScore` (Int, Default `100`).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
-22. **`submissions`**:
+22. **`submissions`** (Bài nộp của học sinh trong lớp):
     - `id` (UUID, PK).
     - `assignmentId` (UUID, FK -> `assignments.id`).
     - `studentId` (UUID, FK -> `student_profiles.id`).
@@ -425,40 +477,70 @@ erDiagram
     - `isLate` (Boolean, Default `false`).
     - `status` (Enum: `SUBMITTED`, `GRADED`, `RESUBMIT_REQUIRED`).
     - Unique Constraint: `(assignmentId, studentId)`.
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
-23. **`grade_feedbacks`**:
+23. **`grade_feedbacks`** (Phiếu chấm điểm bài tập lớp học từ Giảng viên / Trợ giảng):
     - `id` (UUID, PK).
     - `submissionId` (UUID, FK -> `submissions.id`, Unique).
-    - `teacherId` (UUID, FK -> `teacher_profiles.id`).
-    - `score` (Decimal).
-    - `rubricCriteria` (JSON, Nullable).
-    - `comment` (Text).
+    - `teacherId` (UUID, FK -> `teacher_profiles.id`): Giảng viên hoặc Trợ giảng thực hiện chấm bài.
+    - `score` (Decimal): Điểm số (thang 100).
+    - `rubricCriteria` (JSON, Nullable): Điểm chi tiết theo rubric.
+    - `comment` (Text): Lời nhận xét chi tiết gửi cho học viên & phụ huynh.
     - `gradedAt` (Timestamp).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
 ---
 
-#### Nhóm 6: Tài Chính & Học Phí Đa Kênh
+#### Nhóm 6: Tài Chính, Khuyến Mãi & Học Phí Đa Kênh
 
-24. **`tuition_invoices`**:
+24. **`discounts`** (Bảng quản lý mã giảm giá & khuyến mãi):
+    - `id` (UUID, PK).
+    - `code` (String, Unique): Mã coupon (ví dụ: `CHAOBANMOI`, `LMS2026`).
+    - `title` (String): Tên chương trình ưu đãi.
+    - `discountType` (Enum: `PERCENT`, `FIXED`).
+    - `discountValue` (Decimal): Giá trị giảm (ví dụ: `20` cho 20% hoặc `300000` cho 300.000đ).
+    - `maxDiscountAmount` (Decimal, Nullable): Mức giảm tối đa (nếu giảm theo %).
+    - `minOrderAmount` (Decimal, Default `0`): Giá trị đơn hàng tối thiểu để được áp mã.
+    - `usageLimit` (Int, Nullable): Giới hạn số lượt dùng (NULL = không giới hạn).
+    - `usedCount` (Int, Default `0`): Số lượt đã áp dụng thành công.
+    - `startDate` (Timestamp), `endDate` (Timestamp): Thời hạn áp dụng.
+    - `isActive` (Boolean, Default `true`).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+25. **`course_discounts`** (Bảng trung gian N-N gán mã giảm giá cho khóa học cụ thể):
+    - `id` (UUID, PK).
+    - `discountId` (UUID, FK -> `discounts.id`).
+    - `courseId` (UUID, FK -> `courses.id`).
+    - Unique Constraint: `(discountId, courseId)`.
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+26. **`tuition_invoices`** (Hóa đơn học phí & Đơn mua khóa học):
     - `id` (UUID, PK).
     - `invoiceCode` (String, Unique).
     - `studentId` (UUID, FK -> `student_profiles.id`).
-    - `classId` (UUID, FK -> `classes.id`, Nullable).
+    - `classId` (UUID, FK -> `classes.id`, Nullable): Gắn với lớp học (nếu đóng học phí lớp).
+    - `courseId` (UUID, FK -> `courses.id`, Nullable): Gắn với khóa học (nếu mua khóa trực tuyến).
     - `title` (String).
-    - `amount` (Decimal), `paidAmount` (Decimal, Default `0`).
+    - `originalAmount` (Decimal): Học phí gốc trước khi giảm.
+    - `discountId` (UUID, Nullable, FK -> `discounts.id`): Mã giảm giá được áp dụng (nếu có).
+    - `discountAmount` (Decimal, Default `0`): Số tiền được miễn giảm.
+    - `finalAmount` (Decimal): Số tiền thực thu (dùng để sinh mã VietQR Napas247).
+    - `paidAmount` (Decimal, Default `0`).
     - `dueDate` (Date).
     - `status` (Enum: `PENDING`, `PARTIALLY_PAID`, `PAID`, `OVERDUE`).
     - `vietqrPayload` (Text, Nullable).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
-25. **`payment_transactions`**:
+27. **`payment_transactions`**:
     - `id` (UUID, PK).
     - `invoiceId` (UUID, FK -> `tuition_invoices.id`).
-    - `amount` (Decimal).
+    - `amount` (Decimal): Số tiền giao dịch.
     - `method` (Enum: `VIETQR`, `CREDIT_CARD`, `CASH`, `BANK_TRANSFER`).
-    - `transactionRef` (String, Nullable).
+    - `transactionRef` (String, Nullable): Mã tham chiếu ngân hàng (FT... / Webhook ID).
     - `receivedByUserId` (UUID, FK -> `users.id`, Nullable).
-    - `receiptPdfUrl` (String, Nullable).
+    - `receiptPdfUrl` (String, Nullable): Link biên lai thu tiền điện tử PDF.
     - `paidAt` (Timestamp).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
 ---
 
@@ -563,6 +645,38 @@ erDiagram
     - `evaluationNotes` (Text): Nhận xét chi tiết (Điểm mạnh, Điểm yếu cần khắc phục, Lời khuyên nghề nghiệp).
     - `evaluatedAt` (Timestamp, Default `now()`).
     - Unique Constraint: `(projectId, examinerId)`: Mỗi giám khảo chỉ nộp 1 phiếu chấm chính thức.
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+---
+
+#### Nhóm 11: Quản Lý Bậc Lương & Bảng Lương Giáo Viên (Teacher Payroll & Salary Grades)
+
+34. **`teacher_payrolls`** (Bảng tính lương tháng giáo viên):
+    - `id` (UUID, PK).
+    - `payrollPeriod` (String): Tháng tính lương định kỳ (ví dụ: `2026-10`).
+    - `teacherId` (UUID, FK -> `teacher_profiles.id`).
+    - `salaryGradeId` (UUID, FK -> `salary_grades.id`): Bậc lương áp dụng tính thù lao.
+    - `totalTeachingHours` (Decimal): Tổng số giờ giảng dạy thực tế tính từ chấm công `teacher_attendance`.
+    - `baseSalaryAmount` (Decimal): Tiền lương giờ dạy cơ bản ($= \text{Giờ dạy} \times \text{Đơn giá bậc}$).
+    - `kpiBonusAmount` (Decimal, Default `0`): Tiền thưởng thêm khi điểm đánh giá trung bình từ học sinh $\ge 4.5$ sao.
+    - `latePenaltyAmount` (Decimal, Default `0`): Tiền phạt trừ khi giáo viên đi muộn (từ cảnh báo trễ).
+    - `allowanceAmount` (Decimal, Default `0`): Phụ cấp ca dạy ca tối/cuối tuần.
+    - `netSalaryAmount` (Decimal): Tiền thù lao thực lĩnh.
+    - `status` (Enum: `DRAFT`, `APPROVED`, `PAID`).
+    - `approvedBy` (UUID, Nullable, FK -> `users.id`): Quản lý hoặc Kế toán trưởng phê duyệt.
+    - `paidAt` (Timestamp, Nullable): Ngày giải ngân chi trả lương.
+    - `payslipPdfUrl` (String, Nullable): Link phiếu lương điện tử PDF.
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+35. **`payroll_items`** (Chi tiết từng ca dạy cấu thành bảng lương tháng):
+    - `id` (UUID, PK).
+    - `payrollId` (UUID, FK -> `teacher_payrolls.id`).
+    - `sessionId` (UUID, FK -> `class_sessions.id`): Ca học đã dạy.
+    - `teachingMinutes` (Int): Số phút dạy thực tế ghi nhận từ Check-in / Check-out.
+    - `hourlyRateApplied` (Decimal): Đơn giá thù lao áp dụng cho ca dạy đó.
+    - `sessionSalary` (Decimal): Thù lao của ca dạy tương ứng.
+    - `kpiRating` (Decimal, Nullable): Điểm học sinh đánh giá sau buổi học đó.
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
 
 ---
 
@@ -571,6 +685,9 @@ erDiagram
 | Chức năng / Permission Code | Super Admin | Academic Manager (Giáo vụ) | Class Coordinator (Vận hành/CSKH) | Teacher (Giảng viên) | Examiner (Giám khảo) | Student (Học viên) | Parent (Phụ huynh) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | Quản trị hệ thống, Cấu hình RBAC | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| CRUD Danh mục môn học (`subjects`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Quản lý Bậc lương & Duyệt bảng lương GV | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Quản lý Mã giảm giá (`discounts`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Tạo khóa học, phân công giáo viên & mời hội đồng | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Xếp lớp, cấu hình lịch học linh hoạt (TA optional) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Dời lịch học / đổi phòng / đổi Meet link | ✅ | ✅ | ✅ (lớp phụ trách) | ⚠️ (đề xuất) | ❌ | ❌ | ❌ |
@@ -581,11 +698,14 @@ erDiagram
 | Check-in/out ca dạy (chấm công giáo viên) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Điểm danh học sinh lớp Hybrid (Offline/Online) | ✅ | ✅ | ✅ (hỗ trợ) | ✅ | ❌ | ❌ | ❌ |
 | Upload tài liệu học tập, slide, code mẫu | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Giao bài tập, chấm BTVN theo rubric | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Giao bài tập & Chấm BTVN trong lớp học | ✅ | ❌ | ❌ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ |
 | Chấm điểm đồ án tốt nghiệp & thuyết trình cuối khóa | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ |
-| Mua trực tiếp khóa học trực tuyến (Free/VietQR) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Mua trực tiếp khóa học trực tuyến (Free / Áp mã VietQR) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | Xem bài giảng chống tua video, Timestamped Q&A | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Làm BTVN trên Monaco Code Editor | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Xem chuyên cần, điểm số của con | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Thanh toán học phí VietQR, thẻ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Xác nhận thu tiền mặt tại quầy | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Xem chuyên cần, điểm số của con | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Thanh toán học phí VietQR, thẻ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | Xác nhận thu tiền mặt tại quầy | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |

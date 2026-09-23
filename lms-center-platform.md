@@ -138,6 +138,96 @@ type CapstoneEvaluation struct {
 	EvaluationNotes   string    `json:"evaluationNotes" db:"evaluation_notes"`
 	EvaluatedAt       time.Time `json:"evaluatedAt" db:"evaluated_at"`
 }
+
+// 5. Chuẩn 6 trường Audit & Xóa mềm bắt buộc (Universal Audit & Soft Delete)
+type AuditFields struct {
+	CreatedAt time.Time  `json:"createdAt" db:"created_at"`
+	CreatedBy *uuid.UUID `json:"createdBy,omitempty" db:"created_by"`
+	UpdatedAt time.Time  `json:"updatedAt" db:"updated_at"`
+	UpdatedBy *uuid.UUID `json:"updatedBy,omitempty" db:"updated_by"`
+	DeletedAt *time.Time `json:"deletedAt,omitempty" db:"deleted_at"` // Xóa mềm (Soft Delete)
+	DeletedBy *uuid.UUID `json:"deletedBy,omitempty" db:"deleted_by"`
+}
+
+// 6. Môn học động (Dynamic Subjects CRUD)
+type Subject struct {
+	ID          uuid.UUID  `json:"id" db:"id"`
+	Code        string     `json:"code" db:"code"`
+	Name        string     `json:"name" db:"name"`
+	Description *string    `json:"description,omitempty" db:"description"`
+	IconURL     *string    `json:"iconUrl,omitempty" db:"icon_url"`
+	IsActive    bool       `json:"isActive" db:"is_active"`
+	AuditFields
+}
+
+// 7. Bậc lương & Bảng lương giáo viên (Salary Grades & Payroll)
+type SalaryGrade struct {
+	ID                 uuid.UUID `json:"id" db:"id"`
+	GradeName          string    `json:"gradeName" db:"grade_name"` // INTERN_TA, STANDARD_TEACHER, SENIOR_TEACHER, MASTER_TEACHER
+	DisplayName        string    `json:"displayName" db:"display_name"`
+	BaseHourlyRate     float64   `json:"baseHourlyRate" db:"base_hourly_rate"`
+	OvertimeMultiplier float64   `json:"overtimeMultiplier" db:"overtime_multiplier"`
+	KpiBonusRate       float64   `json:"kpiBonusRate" db:"kpi_bonus_rate"`
+	AuditFields
+}
+
+type TeacherPayroll struct {
+	ID                 uuid.UUID  `json:"id" db:"id"`
+	TeacherID          uuid.UUID  `json:"teacherId" db:"teacher_id"`
+	SalaryGradeID      uuid.UUID  `json:"salaryGradeId" db:"salary_grade_id"`
+	Period             string     `json:"period" db:"period"` // "2026-10"
+	TotalTeachingHours float64    `json:"totalTeachingHours" db:"total_teaching_hours"`
+	BaseSalaryAmount   float64    `json:"baseSalaryAmount" db:"base_salary_amount"`
+	KpiBonusAmount     float64    `json:"kpiBonusAmount" db:"kpi_bonus_amount"`
+	LatePenaltyAmount  float64    `json:"latePenaltyAmount" db:"late_penalty_amount"`
+	NetSalaryAmount    float64    `json:"netSalaryAmount" db:"net_salary_amount"`
+	Status             string     `json:"status" db:"status"` // DRAFT, APPROVED, PAID
+	ApprovedBy         *uuid.UUID `json:"approvedBy,omitempty" db:"approved_by"`
+	ApprovedAt         *time.Time `json:"approvedAt,omitempty" db:"approved_at"`
+	AuditFields
+}
+
+// 8. Khuyến mãi & Voucher giảm giá (Discounts & Coupons)
+type Discount struct {
+	ID                uuid.UUID  `json:"id" db:"id"`
+	Code              string     `json:"code" db:"code"`
+	Description       *string    `json:"description,omitempty" db:"description"`
+	DiscountType      string     `json:"discountType" db:"discount_type"` // PERCENT, FIXED
+	Value             float64    `json:"value" db:"value"`
+	MaxDiscountAmount *float64   `json:"maxDiscountAmount,omitempty" db:"max_discount_amount"`
+	MinOrderAmount    float64    `json:"minOrderAmount" db:"min_order_amount"`
+	UsageLimit        *int       `json:"usageLimit,omitempty" db:"usage_limit"`
+	UsedCount         int        `json:"usedCount" db:"used_count"`
+	ValidFrom         time.Time  `json:"validFrom" db:"valid_from"`
+	ValidUntil        time.Time  `json:"validUntil" db:"valid_until"`
+	IsActive          bool       `json:"isActive" db:"is_active"`
+	AuditFields
+}
+
+// 9. Bài tập về nhà theo lớp & Chấm điểm (Class Assignments & Grading)
+type Assignment struct {
+	ID          uuid.UUID  `json:"id" db:"id"`
+	ClassID     uuid.UUID  `json:"classId" db:"class_id"`
+	Title       string     `json:"title" db:"title"`
+	Description string     `json:"description" db:"description"`
+	MaxScore    float64    `json:"maxScore" db:"max_score"`
+	DueAt       time.Time  `json:"dueAt" db:"due_at"`
+	AuditFields
+}
+
+type Submission struct {
+	ID           uuid.UUID  `json:"id" db:"id"`
+	AssignmentID uuid.UUID  `json:"assignmentId" db:"assignment_id"`
+	StudentID    uuid.UUID  `json:"studentId" db:"student_id"`
+	CodeContent  *string    `json:"codeContent,omitempty" db:"code_content"`
+	GithubURL    *string    `json:"githubUrl,omitempty" db:"github_url"`
+	Score        *float64   `json:"score,omitempty" db:"score"`
+	TeacherNotes *string    `json:"teacherNotes,omitempty" db:"teacher_notes"`
+	GradedBy     *uuid.UUID `json:"gradedBy,omitempty" db:"graded_by"`
+	GradedAt     *time.Time `json:"gradedAt,omitempty" db:"graded_at"`
+	Status       string     `json:"status" db:"status"` // SUBMITTED, GRADED, LATE
+	AuditFields
+}
 ```
 
 ---

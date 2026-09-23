@@ -98,6 +98,20 @@ flowchart TD
 
 ---
 
+### Nhóm 7: Bảng Lương Giáo Viên, Mã Giảm Giá, Môn Học & Chấm Điểm Lớp Học (Payroll, Discounts & Class Grading)
+
+| Mã Test Case | Phân hệ | Mô tả kịch bản | Các bước thực hiện | Kết quả mong đợi | Mức độ |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **TC-PAYROLL-01** | Bảng lương | Tự động tổng hợp bảng lương tháng theo bậc lương, thưởng KPI & phạt muộn | 1. Giáo viên Senior (350.000 đ/h) dạy 40h trong tháng 10/2026.<br>2. Điểm đánh giá TB đạt 4.8/5 ($\ge 4.5$), đi muộn 20 phút (phạt 100k).<br>3. Admin chạy `POST /api/v1/payrolls/generate`. | Lương cơ bản = 14.000.000 đ; Thưởng KPI 15% = 2.100.000 đ; Phạt muộn = -100.000 đ; Thực lĩnh = 16.000.000 đ; trạng thái `DRAFT`. | **P0 (Blocker)** |
+| **TC-PAYROLL-02** | Bảng lương | Admin phê duyệt bảng lương quyết toán chuyển khoản | 1. Admin kiểm tra phiếu lương `DRAFT` của GV.<br>2. Nhấn [Phê duyệt quyết toán]. | Trạng thái chuyển `APPROVED`, lưu `approved_by` và `approved_at`, xuất danh sách chi trả ngân hàng. | **P0** |
+| **TC-DISCOUNT-01** | Khuyến mãi | Áp mã giảm giá phần trăm có giới hạn tối đa khi mua khóa học | 1. Khóa học trị giá 3.000.000 đ.<br>2. Nhập mã `GIAM20` (Giảm 20%, tối đa 400.000 đ).<br>3. Nhấn [Áp dụng]. | Hệ thống tính mức giảm là 400.000 đ (thay vì 600.000 đ do chạm trần); Số tiền thanh toán cuối cùng = 2.600.000 đ; Sinh mã VietQR đúng 2.600.000 đ. | **P0** |
+| **TC-DISCOUNT-02** | Khuyến mãi | Chặn mã giảm giá khi hết lượt hoặc không đạt giá trị tối thiểu | 1. Mã giảm giá yêu cầu đơn tối thiểu 2.000.000 đ.<br>2. Áp dụng cho khóa học 1.500.000 đ. | Báo lỗi 400 "Đơn hàng chưa đạt giá trị tối thiểu 2.000.000 đ để áp dụng mã giảm giá này". | **P1** |
+| **TC-SUBJ-01** | Môn học | CRUD Môn học động trong hệ thống đào tạo | 1. Admin tạo môn `WEB_FE` ("Lập Trình Web Frontend").<br>2. Tạo khóa học gắn với môn `WEB_FE`.<br>3. Cập nhật tên môn học. | Môn học được tạo và cập nhật thành công; Khóa học liên kết đúng `subjectId`; API danh sách trả về đầy đủ. | **P0** |
+| **TC-CLASS-GRD-01** | Chấm bài lớp | Giáo viên vào lớp học chấm bài tập và đồng bộ Sổ điểm lớp | 1. Giáo viên mở `/teacher/classes/{classId}` > tab Bài tập.<br>2. Chọn bài tập BTVN-03 > Xem danh sách học viên.<br>3. Mở bài làm học viên A, chấm 95 điểm kèm lời phê.<br>4. Bấm [Lưu điểm]. | Dữ liệu bài nộp lưu điểm 95; Sổ điểm của lớp (Gradebook) tự động cập nhật cột điểm tương ứng của học viên A; Học viên nhận thông báo điểm mới. | **P0** |
+| **TC-SOFTDEL-01** | Audit & CSDL | Kiểm tra 6 trường Audit và cơ chế Xóa mềm (Soft Delete) | 1. Admin thực hiện xóa môn học hoặc lớp học.<br>2. Kiểm tra bản ghi trong PostgreSQL. | Bản ghi KHÔNG bị xóa vật lý; `deleted_at` được gán timestamp hiện tại; `deleted_by` lưu ID người xóa; Các câu lệnh query danh sách tự động loại trừ bản ghi đã xóa (`WHERE deleted_at IS NULL`). | **P0 (Blocker)** |
+
+---
+
 ## 3. Lệnh Chạy Bộ Kiểm Thử Tự Động (Nuxt UI + Go-chi Stack)
 
 ```bash

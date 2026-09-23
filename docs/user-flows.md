@@ -328,6 +328,53 @@ sequenceDiagram
 +-----------------------------------------------------------------------------+
 ```
 
+### 7.5 Giao diện Chấm Bài Tập Về Nhà Theo Lớp Học (Class Assignment & Monaco Code Grading Portal)
+```
++-----------------------------------------------------------------------------+
+| LỚP: LMS-FE-K32 > BÀI TẬP: BTVN-03: Xây dựng REST API với Go-chi            |
+| Hạn nộp: 23:59 20/10/2026 | Đã nộp: 22/25 | Đã chấm: 18/22                 |
++-------------------------------------------------------+---------------------+
+| DANH SÁCH BÀI LÀM HỌC VIÊN CỦA LỚP                    | TRÌNH XEM CODE &    |
+| 1. Trần Minh Hoàng  [Đã chấm: 95đ] [Xem code]         | PHIẾU CHẤM ĐIỂM     |
+| 2. Lê Hoàng Nam     [Chưa chấm]    [Đang chọn >]      | ------------------- |
+| 3. Phạm Minh Đức    [Chưa nộp]     [Nhắc nộp]         | Học viên: Lê Hoàng Nam|
+| ----------------------------------------------------- | GitHub: /nam/hw-03  |
+| TRÌNH XEM CODE MONACO (Read-only + Diff View):        | ------------------- |
+| package handler                                       | ĐIỂM SỐ (Thang 100):|
+| func (h *UserHandler) GetProfile(w http.ResponseWriter)| [ 90       ] / 100  |
+|     // Validate token                                 | ------------------- |
+|     userID := auth.GetUserID(r.Context())             | Nhận xét giáo viên: |
+|     user, err := h.useCase.FindByID(r.Context(), userID)| +-----------------+ |
+|     if err != nil {                                   | | Xử lý context rất | |
+|         response.NotFound(w, "NOT_FOUND", err.Error())| | chuẩn. Cần thêm   | |
+|         return                                        | | unit test cho err.| |
+|     }                                                 | +-----------------+ |
+|     response.OK(w, user, "Success")                   | [🎙 Ghi âm dặn dò]  |
+| }                                                     | [ 💾 LƯU ĐIỂM VÀO ] |
+|                                                       | [   GRADEBOOK LỚP ] |
++-------------------------------------------------------+---------------------+
+```
+
+### 7.6 Giao diện Bảng Lương Giáo Viên & Bậc Lương Hàng Tháng (Admin Teacher Payroll Management)
+```
++-----------------------------------------------------------------------------+
+| QUẢN LÝ BẢNG LƯƠNG GIÁO VIÊN | Kỳ lương: [ Tháng 10/2026 ▼ ] | Trạng thái: [ Tất cả ▼ ]
+| Tổng ngân sách: 158.400.000 đ | Số GV: 18 | Đã duyệt: 14 | Chờ duyệt: 4     |
+| [ ⚡ TỰ ĐỘNG TỔNG HỢP LƯƠNG THÁNG ] [ ⚙️ Cấu hình Bậc Lương ] [ 📥 Xuất Excel ]
++-----------------------------------------------------------------------------+
+| GV / Bậc Lương      | Giờ Dạy | Lương Giờ | Thưởng KPI | Phạt Muộn | Thực Lĩnh   | Trạng thái | Thao tác
+| --------------------+---------+-----------+------------+-----------+-------------+------------+---------
+| ThS. Nguyễn Văn Tuấn| 42.5 h  | 350.000 đ | +2.231.250 | -100.000  | 17.006.250 đ| [Chờ duyệt]| [Duyệt] [Chi tiết]
+| (Bậc: Senior)       |         |           | (⭐ 4.85/5) | (20 phút) |             |            |
+| KS. Đặng Hồng Sơn   | 36.0 h  | 250.000 đ | +900.000   |        0  |  9.900.000 đ| [Đã duyệt] | [Chi tiết]
+| (Bậc: Standard)     |         |           | (⭐ 4.60/5) | (0 phút)  |             |            |
+| Lê Thu Hà (TA)      | 28.0 h  | 120.000 đ |          0 |  -50.000  |  3.310.000 đ| [Chờ duyệt]| [Duyệt] [Chi tiết]
+| (Bậc: Intern/TA)    |         |           | (⭐ 4.20/5) | (10 phút) |             |            |
++-----------------------------------------------------------------------------+
+| [✓ Duyệt hàng loạt đã chọn]                       [ 💳 KẾT XUẤT LỆNH CHI TRẢ ]|
++-----------------------------------------------------------------------------+
+```
+
 ---
 
 ## 8. Luồng 7: Giám Khảo Chấm Điểm Đồ Án Tốt Nghiệp & Phản Biện (Capstone Defense)
@@ -395,4 +442,122 @@ sequenceDiagram
         API -->> Student: Bắn Email biên lai & Thông báo chào mừng học viên vào học
     end
 ```
+
+---
+
+## 10. Luồng 9: Giáo Viên Quản Lý & Chấm Bài Tập Về Nhà Theo Lớp (Class Assignment Grading Portal)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Teacher as Giảng viên / Trợ giảng
+    participant UI as Teacher Class Portal (/teacher/classes/:id)
+    participant Monaco as Monaco Diff/Code Viewer
+    participant API as Backend Server
+    participant DB as PostgreSQL Database
+    actor Student as Học viên
+    actor Parent as Phụ huynh
+
+    Teacher ->> UI: Mở chi tiết lớp học (/teacher/classes/:id)
+    UI ->> Teacher: Hiển thị các tab [ Buổi học | Điểm danh | Bài tập | Sổ điểm ]
+    Teacher ->> UI: Nhấp tab [ Bài tập ] > Chọn "BTVN-03: Xây dựng REST API"
+    UI ->> API: GET /api/v1/classes/:id/assignments/:assignmentId/submissions
+    API ->> DB: Lấy danh sách bài nộp của học viên trong lớp
+    DB -->> API: Trả về trạng thái nộp, điểm hiện tại, codeContent, githubUrl
+    API -->> UI: Hiển thị bảng danh sách học sinh (22/25 đã nộp)
+
+    Teacher ->> UI: Chọn bài nộp của học viên "Lê Hoàng Nam"
+    UI ->> Monaco: Tải mã nguồn của học viên lên Monaco Code Viewer (hỗ trợ Syntax highlight & Diff)
+    Teacher ->> Monaco: Rà soát logic mã nguồn, kiểm tra xử lý lỗi & Clean Code
+    Teacher ->> UI: Nhập điểm Rubric (90/100) & Nhận xét Markdown + Ghi âm dặn dò
+    Teacher ->> UI: Nhấn [ Lưu Điểm Vào Sổ Điểm Lớp ]
+    UI ->> API: POST /api/v1/classes/:id/assignments/:assignmentId/submissions/:subId/grade
+    API ->> DB: Cập nhật submission (score, teacherNotes, gradedAt, gradedBy)
+    API ->> DB: Tự động cập nhật cột điểm tương ứng trong Sổ điểm lớp học (Gradebook)
+    API -->> UI: Thông báo chấm bài thành công
+    API -->> Student: Gửi Push Notification "Bài tập BTVN-03 đã có điểm: 90/100"
+    API -->> Parent: Thông báo kết quả học tập của con trên Parent Portal
+```
+
+---
+
+## 11. Luồng 10: Áp Mã Khuyến Mãi (Discount / Coupon) Khi Mua Khóa Học & Sinh VietQR
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Student as Học viên
+    participant UI as Checkout Page (/checkout/:courseId)
+    participant API as Backend Server
+    participant DB as PostgreSQL Database
+    actor Bank as Ngân hàng / Napas247
+
+    Student ->> UI: Bấm mua khóa học (Giá gốc: 2.000.000 đ)
+    UI ->> Student: Hiển thị form thanh toán kèm ô [ Nhập mã giảm giá ]
+    Student ->> UI: Nhập coupon "KHAIGIANG2026" và bấm [ Áp Dụng ]
+    UI ->> API: POST /api/v1/discounts/validate (couponCode, courseId, orderAmount: 2000000)
+    API ->> DB: Kiểm tra discounts (còn hạn, isActive=true, minOrderAmount <= 2tr, usedCount < usageLimit)
+    DB -->> API: Mã hợp lệ, loại PERCENT 20%, max 500.000 đ
+    API -->> UI: Trả về discountAmount: 400.000 đ, finalAmount: 1.600.000 đ
+    UI ->> Student: Cập nhật hóa đơn: Giảm -400.000 đ => Số tiền cần trả: 1.600.000 đ
+
+    Student ->> UI: Bấm [ Xác nhận thanh toán VietQR ]
+    UI ->> API: POST /api/v1/courses/:id/checkout (couponCode: "KHAIGIANG2026")
+    API ->> DB: Tạo tuition_invoices (originalAmount: 2tr, discountAmount: 400k, finalAmount: 1.6tr, discountId)
+    API ->> DB: Tăng usedCount của mã giảm giá (+1)
+    API -->> UI: Trả về mã VietQR Napas247 đúng số tiền 1.600.000 đ kèm cú pháp chuyển khoản
+    UI ->> Student: Hiển thị mã QR động để học viên quét App Banking
+    Student ->> Bank: Quét mã VietQR chuyển đúng 1.600.000 đ
+    Bank ->> API: POST /api/v1/webhooks/payment
+    API ->> DB: Đánh dấu hóa đơn PAID và kích hoạt quyền học
+    API -->> Student: Chúc mừng thanh toán thành công và mở khóa bài học
+```
+
+---
+
+## 12. Luồng 11: Admin Tổng Hợp & Phê Duyệt Bảng Lương Giáo Viên Hàng Tháng (Teacher Monthly Payroll)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin as Quản trị viên / Giám đốc Đào tạo
+    participant UI as Admin Payroll Portal (/admin/payrolls)
+    participant API as Backend Server
+    participant Engine as Payroll Calculation Engine
+    participant DB as PostgreSQL Database
+    actor Teacher as Giảng viên
+
+    Admin ->> UI: Truy cập Quản lý Bảng Lương (/admin/payrolls)
+    Admin ->> UI: Chọn kỳ tính lương "Tháng 10/2026" và nhấn [ Tự Động Tổng Hợp Lương ]
+    UI ->> API: POST /api/v1/payrolls/generate (period: "2026-10")
+    API ->> Engine: Kích hoạt thuật toán tổng hợp thù lao định mức
+
+    Engine ->> DB: 1. Truy vấn các ca dạy hoàn thành trong tháng của từng GV
+    Engine ->> DB: 2. Lấy định mức bậc lương (baseHourlyRate, kpiBonusRate) từ salary_grades
+    Engine ->> DB: 3. Lấy điểm đánh giá trung bình từ session_feedbacks của học sinh
+    Engine ->> DB: 4. Lấy số phút đi muộn từ teacher_attendances (lateMinutes)
+
+    loop Xử lý từng Giảng viên
+        Engine ->> Engine: baseSalary = totalTeachingHours * baseHourlyRate
+        alt Điểm đánh giá TB >= 4.5
+            Engine ->> Engine: kpiBonus = baseSalary * kpiBonusRate
+        else Điểm < 4.5
+            Engine ->> Engine: kpiBonus = 0
+        end
+        Engine ->> Engine: latePenalty = (lateMinutes / 10) * 50.000 đ
+        Engine ->> Engine: netSalary = baseSalary + kpiBonus - latePenalty
+    end
+
+    Engine ->> DB: Lưu toàn bộ bản ghi teacher_payrolls & payroll_items (trạng thái DRAFT)
+    Engine -->> API: Hoàn tất tổng hợp 18 giảng viên, tổng quỹ 158.400.000 đ
+    API -->> UI: Hiển thị bảng lương chi tiết từng giảng viên
+
+    Admin ->> UI: Soát xét phiếu lương ThS. Nguyễn Văn Tuấn (42.5h, Đánh giá 4.85/5 => Net 17.006.250 đ)
+    Admin ->> UI: Nhấn [ Phê Duyệt Quyết Toán ]
+    UI ->> API: POST /api/v1/payrolls/:id/approve
+    API ->> DB: Cập nhật status = APPROVED, approved_by = adminId, approved_at = NOW()
+    API -->> UI: Trạng thái đổi sang [ Đã duyệt ], cho phép xuất lệnh chuyển khoản ngân hàng
+    API -->> Teacher: Gửi thông báo phiếu lương tháng 10/2026 tới ứng dụng Giảng viên
+```
+
 

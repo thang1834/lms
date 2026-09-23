@@ -267,6 +267,109 @@ Phục vụ các khóa học chuyên sâu (nhất là CNTT và Ngoại ngữ nâ
 
 ---
 
+### Phân hệ 12: Quản Lý Bậc Lương & Bảng Lương Giáo Viên (Teacher Salary Grades & Monthly Payroll)
+
+Đáp ứng yêu cầu quản lý nhân sự và chi trả thù lao minh bạch, tự động hóa tại trung tâm đào tạo:
+
+- **FR-PAYROLL-01 (Quản lý Bậc Lương - Salary Grades / Levels):**
+  - Super Admin và Quản lý Đào tạo cấu hình các bậc lương giảng viên:
+    - *Bậc 1 - Trợ giảng / Tập sự (`GRADE_INTERN_TA`):* Đơn giá giờ dạy cơ bản (ví dụ: 100.000 - 150.000 VNĐ/giờ).
+    - *Bậc 2 - Giảng viên chuẩn (`GRADE_STANDARD`):* Đơn giá giờ dạy (ví dụ: 250.000 - 350.000 VNĐ/giờ).
+    - *Bậc 3 - Giảng viên cao cấp (`GRADE_SENIOR`):* Đơn giá giờ dạy (ví dụ: 400.000 - 600.000 VNĐ/giờ).
+    - *Bậc 4 - Chuyên gia / Master (`GRADE_MASTER`):* Đơn giá đặc biệt cho đồ án hoặc chuyên đề nâng cao.
+  - Mỗi bậc lương định nghĩa: Đơn giá giờ dạy cơ bản (`baseHourlyRate`), Hệ số ca tối/cuối tuần (`overtimeMultiplier`), Tỷ lệ thưởng KPI buổi học (`kpiBonusRate`).
+  - Hồ sơ giáo viên (`teacher_profiles`) liên kết với một bậc lương cụ thể (`salaryGradeId`).
+- **FR-PAYROLL-02 (Bảng Lương Tháng Tự Động - Automated Monthly Payroll Slip):**
+  - Định kỳ cuối tháng (hoặc ngày chốt lương), Admin bấm **"Tổng hợp bảng lương"**:
+    - *Tổng giờ dạy:* Hệ thống tự động tính tổng số phút dạy thực tế từ các bản ghi `teacher_attendance` có trạng thái `ON_TIME` hoặc hoàn thành ca dạy.
+    - *Thưởng KPI chất lượng:* Nếu điểm sao trung bình học sinh đánh giá sau buổi học (`session_feedbacks`) trong tháng $\ge 4.5$ sao, cộng thêm thưởng theo tỷ lệ `kpiBonusRate`.
+    - *Phạt đi muộn:* Trừ tiền phạt tự động nếu giáo viên bị ghi nhận cảnh báo đi muộn (`lateMinutes > 0`).
+    - *Lương thực lĩnh:* $\text{NetSalary} = (\text{Số giờ} \times \text{Đơn giá bậc}) + \text{Thưởng KPI} - \text{Phạt đi muộn} + \text{Phụ cấp}$.
+  - Quy trình phê duyệt bảng lương: `DRAFT` (Dự thảo) $\to$ `APPROVED` (Giám đốc duyệt) $\to$ `PAID` (Đã thanh toán).
+  - Tự động xuất phiếu lương điện tử (PDF Payroll Slip) gửi về email và Dashboard cá nhân của Giảng viên.
+
+---
+
+### Phân hệ 13: Hệ Thống Giảm Giá & Áp Mã Khuyến Mãi (Course Discounts & Coupons)
+
+Hỗ trợ các chiến dịch marketing, ưu đãi tuyển sinh và bán khóa học:
+
+- **FR-DISC-01 (Quản lý Mã Khuyến Mãi - Coupon Management):**
+  - Quản trị viên tạo và cấu hình mã giảm giá:
+    - *Mã định danh (`code`):* Ví dụ `CHAOBANMOI`, `LMS2026`, `BLACKFRIDAY`.
+    - *Loại giảm giá (`discountType`):* Theo phần trăm (`PERCENT` - ví dụ giảm 20%) hoặc Số tiền cố định (`FIXED` - ví dụ giảm 300.000 VNĐ).
+    - *Giới hạn giảm tối đa (`maxDiscountAmount`):* Áp dụng khi giảm theo %, tránh giảm vượt ngân sách.
+    - *Giá trị đơn hàng tối thiểu (`minOrderAmount`):* Ví dụ chỉ áp dụng cho đơn từ 1.000.000 VNĐ.
+    - *Thời hạn hiệu lực:* `startDate` đến `endDate`.
+    - *Số lượt dùng tối đa (`usageLimit`):* Ví dụ 100 lượt; thống kê số lượt đã dùng (`usedCount`).
+    - *Phạm vi áp dụng:* Áp dụng toàn bộ khóa học hoặc theo từng danh mục môn học (`subjects`) hoặc khóa học chỉ định.
+- **FR-DISC-02 (Áp mã khi Mua Khóa Học - Coupon Application at Checkout):**
+  - Tại màn hình thanh toán khóa học trực tuyến hoặc đóng học phí lớp học, người dùng nhập mã giảm giá.
+  - Hệ thống kiểm tra hợp lệ tức thì: Còn hạn sử dụng, chưa vượt số lượt tối đa, đạt giá trị đơn tối thiểu.
+  - Tự động tính toán số tiền giảm (`discountAmount`) và số tiền thực trả (`finalAmount`).
+  - Sinh mã VietQR Napas247 động với đúng số tiền đã giảm để học viên thanh toán ngay.
+
+---
+
+### Phân hệ 14: Danh Mục Môn Học & Lĩnh Vực Đào Tạo Động (Dynamic Subject Management - CRUD)
+
+Loại bỏ hoàn toàn cơ chế hardcode enum tĩnh, chuyển sang quản lý danh mục môn học động linh hoạt cho trung tâm:
+
+- **FR-SUBJ-01 (CRUD Danh mục Môn học):**
+  - Super Admin và Quản lý Đào tạo có toàn quyền:
+    - **Xem danh sách (Read):** Lọc theo trạng thái hoạt động, tìm kiếm theo tên hoặc mã môn.
+    - **Thêm mới (Create):** Tạo môn học mới (Mã môn `code`: ví dụ `IT`, `ENGLISH`, `JAPANESE`, `DESIGN`, `MARKETING`; Tên môn `name`; Mô tả; Icon URL).
+    - **Cập nhật (Update):** Đổi tên, sửa mô tả, cập nhật icon môn học.
+    - **Xóa mềm (Soft Delete):** Ẩn môn học không còn đào tạo mà không làm mất tính toàn vẹn của các khóa học và lớp học lịch sử.
+  - Mọi khóa học (`courses`) liên kết khóa ngoại trực tiếp tới `subjects.id`.
+
+---
+
+### Phân hệ 15: Quản Lý & Chấm Bài Tập Trực Tiếp Trong Lớp Học (Class Assignment & Grading Portal)
+
+Đặc tả chi tiết quy trình Giảng viên quản lý và chấm bài tập của học sinh trong ngữ cảnh lớp học cụ thể:
+
+- **FR-CLASS-GRD-01 (Quản lý Bài tập theo Lớp học - Class Assignment Dashboard):**
+  - Giảng viên truy cập vào lớp học phụ trách (`/teacher/classes/{classId}`) $\to$ Tab **"Bài tập về nhà (Assignments)"**.
+  - Hiển thị danh sách các bài tập đã giao cho lớp kèm các chỉ số thống kê trực quan:
+    - Tiêu đề bài tập, Hạn nộp (Deadline), Định dạng yêu cầu (Monaco Code / GitHub / File).
+    - Tỷ lệ nộp bài: Số học sinh đã nộp ($X/Y$ học viên).
+    - Tiến độ chấm bài: Số bài đã chấm ($Z/X$ bài nộp), Số bài còn chờ chấm.
+- **FR-CLASS-GRD-02 (Màn hình Chấm bài tập lớp học - Class Submission Grading Workspace):**
+  - Giáo viên bấm nút **[Chấm bài lớp]** tại bài tập cần chấm:
+    - Hiển thị danh sách toàn bộ học viên trong lớp kèm trạng thái nộp bài (`Đã nộp đúng giờ`, `Nộp muộn`, `Chưa nộp`).
+    - Khung xem bài làm trực tiếp:
+      - Nếu là bài lập trình: Trình xem Monaco Editor hiển thị mã nguồn học viên viết (syntax highlighting, định dạng thụt dòng).
+      - Nếu là GitHub: Nút mở nhanh kho mã nguồn hoặc pull request.
+      - Nếu là file/audio: Trình nghe audio hoặc xem PDF trực tiếp trên web.
+    - Form chấm điểm theo Rubric tiêu chí và nhập lời nhận xét chi tiết cho học sinh.
+    - Nút **[Lưu điểm & Gửi nhận xét]**: Cập nhật trạng thái bài nộp sang `GRADED`.
+- **FR-CLASS-GRD-03 (Đồng bộ Sổ Điểm Lớp & Thông Báo Tức Thời):**
+  - Điểm số sau khi chấm lập tức được tính toán và đồng bộ vào Sổ điểm tổng kết của lớp học (`gradebook_configs`).
+  - Tự động phát thông báo In-app và Zalo/SMS thông báo điểm số và nhận xét của thầy cô tới Học viên và Phụ huynh.
+
+---
+
+### Phân hệ 16: Quy Chuẩn Toàn Bộ Bảng CSDL: 6 Audit Fields & Chính Sách Soft Delete
+
+Đảm bảo an toàn dữ liệu, phục vụ kiểm toán tài chính và khả năng phục hồi dữ liệu:
+
+- **FR-AUDIT-01 (Chuẩn 6 Trường Audit Trên 100% Bảng CSDL):**
+  - Mọi bảng trong hệ thống CSDL bắt buộc phải có đầy đủ 6 trường:
+    - `createdAt` (Timestamp with time zone, Default `now()`).
+    - `createdBy` (UUID, Nullable, FK -> `users.id`): Người tạo bản ghi.
+    - `updatedAt` (Timestamp with time zone, Default `now()`).
+    - `updatedBy` (UUID, Nullable, FK -> `users.id`): Người cập nhật gần nhất.
+    - `deletedAt` (Timestamp with time zone, Nullable): Mốc thời gian xóa mềm.
+    - `deletedBy` (UUID, Nullable, FK -> `users.id`): Người thực hiện xóa mềm.
+- **FR-AUDIT-02 (Chính Sách Bắt Buộc Soft Delete):**
+  - **Nghiêm cấm Hard Delete (DELETE SQL vật lý)** trên các bảng thực thể cốt lõi: `users`, `classes`, `class_sessions`, `courses`, `subjects`, `enrollments`, `tuition_invoices`, `assignments`, `submissions`, `teacher_profiles`, `salary_grades`, `teacher_payrolls`, `discounts`.
+  - Mọi thao tác xóa dữ liệu từ người dùng sẽ chuyển thành cập nhật cờ `deletedAt = now()` và `deletedBy = currentUserId`.
+  - Toàn bộ các truy vấn nghiệp vụ (SELECT/JOIN) mặc định tự động áp dụng điều kiện `WHERE deleted_at IS NULL`.
+  - Chỉ Super Admin trong màn hình Thùng rác (Recycle Bin) mới có quyền Khôi phục (Restore: gán `deletedAt = NULL`) hoặc Xóa vĩnh viễn (Hard Delete) sau khi có xác nhận 2 lớp.
+
+---
+
 ## 4. Bổ Sung Ma Trận User Stories (Acceptance Criteria)
 
 | Mã Story | Đối tượng | Hành động (User Story) | Tiêu chí chấp nhận (Acceptance Criteria) |
@@ -289,5 +392,11 @@ Phục vụ các khóa học chuyên sâu (nhất là CNTT và Ngoại ngữ nâ
 | **US-CRS-01** | Học viên | Đăng ký học ngay khóa học trực tuyến Miễn Phí | - Click "Đăng ký học ngay", hệ thống kích hoạt enrollment `ACTIVE` trong 1 giây, truy cập bài học tức thì không cần thanh toán. |
 | **US-CRS-02** | Học viên | Mua trực tiếp khóa học trực tuyến Trả Phí qua VietQR | - Click "Mua khóa học", hiển thị mã VietQR Napas247 động.<br>- Tự động kích hoạt khóa học trong 3 giây khi nhận webhook chuyển khoản thành công. |
 | **US-EXAM-01** | Giám khảo | Chấm điểm đồ án tốt nghiệp & nhận xét phản biện | - Xem GitHub repo, live demo và slide thuyết trình của học sinh.<br>- Nhập điểm theo 4 tiêu chí Rubric và lưu nhận xét chuyên môn. |
+| **US-PAYROLL-01** | Admin / Kế toán | Tính bảng lương giáo viên tự động theo bậc & KPI | - Tự động tổng hợp giờ dạy từ check-in thực tế nhân đơn giá bậc lương.<br>- Tự động cộng thưởng KPI nếu sao đánh giá $\ge 4.5$, trừ phạt nếu đi muộn.<br>- Xuất phiếu lương PDF gửi giáo viên. |
+| **US-DISC-01** | Học viên | Áp mã giảm giá khi thanh toán khóa học | - Nhập mã coupon hợp lệ, hệ thống tự trừ tiền và cập nhật mã VietQR động với số tiền đã giảm. |
+| **US-SUBJ-01** | Quản lý Đào tạo | Quản lý danh mục môn học động (CRUD) | - Thêm/sửa/xóa mềm môn học (CNTT, Ngoại ngữ, Thiết kế...) linh hoạt trên giao diện quản trị. |
+| **US-CLASS-GRD-01**| Giảng viên | Chấm bài tập của học sinh trực tiếp trong lớp học | - Vào lớp học phụ trách, xem danh sách bài nộp của cả lớp.<br>- Mở bài làm xem code Monaco/GitHub, chấm điểm theo Rubric và gửi nhận xét tức thì. |
+| **US-AUDIT-01** | Hệ thống | Ghi nhận Audit fields và áp dụng Soft Delete | - Tự động điền 6 trường audit trên mọi bản ghi.<br>- Xóa mềm chuyển cờ `deletedAt`, dữ liệu lịch sử được bảo toàn toàn vẹn. |
+
 
 
