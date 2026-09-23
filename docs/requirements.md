@@ -32,38 +32,52 @@ flowchart TD
     SuperAdmin["1. Super Admin (Chủ trung tâm / Giám đốc)"]
     AcademicMgr["2. Academic Manager (Quản lý Đào tạo / Giáo vụ trưởng)"]
     ClassCoord["3. Class Coordinator (Chuyên viên Vận hành lớp & CSKH)"]
-    Teacher["4. Giảng viên & Trợ giảng (Teacher / TA)"]
-    Student["5. Học viên (Student)"]
-    Parent["6. Phụ huynh (Parent)"]
+    Teacher["4. Giảng viên chính (Lead Teacher)"]
+    TA["5. Trợ giảng - Tùy chọn (Teaching Assistant - Optional)"]
+    Examiner["6. Giám khảo / Hội đồng chuyên môn (Examiner / Judge / Reviewer)"]
+    Student["7. Học viên (Student)"]
+    Parent["8. Phụ huynh (Parent)"]
 
     SuperAdmin --> AcademicMgr
     SuperAdmin --> ClassCoord
     AcademicMgr --> |Xếp lớp, Lịch dạy, Đánh giá| Teacher
+    AcademicMgr --> |Phân công tùy chọn| TA
+    AcademicMgr --> |Mời chấm đồ án / Thuyết trình| Examiner
     ClassCoord --> |Đồng hành, Chăm sóc, Nhắc nhở| Student
     ClassCoord --> |Báo cáo chuyên cần, Hỗ trợ| Parent
     Teacher --> |Giảng dạy, Điểm danh, Chấm bài| Student
+    TA -.-> |Hỗ trợ kỹ thuật, giải đáp code| Student
+    Examiner --> |Chấm điểm đồ án, review dự án| Student
     Student -.-> Parent
 ```
 
 ### Chi tiết vai trò:
 1. **Super Admin (Chủ trung tâm / Quản trị viên cấp cao):** Toàn quyền cấu hình hệ thống, quản lý tài chính, phân quyền các Role trong bảng `roles` và `permissions`.
 2. **Academic Manager (Quản lý Đào tạo / Giáo vụ trưởng):**
-   - Tạo khóa học, phân công giảng viên & trợ giảng.
+   - Tạo khóa học, phân công giảng viên chính, chỉ định trợ giảng (nếu lớp yêu cầu) và mời hội đồng giám khảo.
    - Xếp lớp học, thiết lập thời khóa biểu định kỳ và xử lý dời lịch/bù buổi.
    - Đánh giá chất lượng giảng viên (Teacher Evaluation / Audit), duyệt giáo án và tài liệu khóa học.
 3. **Class Coordinator / Operations & Care (Chuyên viên Vận hành lớp & Chăm sóc học viên):**
-   - Mỗi lớp học có 1 Chuyên viên vận hành đồng hành cùng Giảng viên và Trợ giảng.
+   - Mỗi lớp học có 1 Chuyên viên vận hành đồng hành cùng Giảng viên.
+   - Nhận cảnh báo tức thời khi giáo viên đi trễ/chưa vào lớp để can thiệp kịp thời.
    - Theo dõi chuyên cần buổi học, trực tiếp liên hệ học sinh vắng hoặc đi trễ.
    - Ghi nhận `coordinatorNote` (lý do nghỉ ốm, hoàn cảnh học sinh) gửi cho Phụ huynh.
    - Đôn đốc học viên nộp BTVN trước deadline, tiếp nhận và giải quyết phản hồi về chất lượng buổi học.
-4. **Giảng viên & Trợ giảng (Teacher & Teaching Assistant):**
+4. **Giảng viên chính (Lead Teacher):**
    - Xem thời khóa biểu cá nhân, Check-in / Check-out ca dạy để chấm công.
    - Điểm danh học sinh lớp Hybrid (Offline/Online), upload tài liệu bài học, giao BTVN và chấm điểm theo rubric.
-5. **Học viên (Student):**
-   - Xem lịch học, học bài giảng YouTube, tải tài liệu bài học.
+5. **Trợ giảng - Tùy chọn (Teaching Assistant - Optional):**
+   - Là vai trò **tùy chọn (không bắt buộc)** trong cấu hình lớp học. Tùy quy mô lớp (lớp đông trên 15 học viên CNTT) hoặc cấp độ, lớp học có thể có hoặc không có Trợ giảng.
+   - Hỗ trợ giải đáp thắc mắc bài tập code trên lớp, hỗ trợ điểm danh và theo dõi thực hành.
+6. **Giám khảo / Hội đồng chuyên môn (Examiner / Judge / Reviewer):**
+   - Chuyên gia, giảng viên cao cấp hoặc đối tác doanh nghiệp được mời tham gia vào các buổi bảo vệ đồ án tốt nghiệp (Capstone Project), thi thuyết trình hoặc thi vấn đáp cuối khóa.
+   - Đăng nhập vào cổng chấm thi, xem sản phẩm/code của học sinh, chấm điểm theo Rubric tiêu chí và nhập nhận xét chuyên môn độc lập.
+7. **Học viên (Student):**
+   - Mua trực tiếp các khóa học trực tuyến (khóa học miễn phí hoặc trả phí qua VietQR/Thẻ).
+   - Xem lịch học, học bài giảng YouTube chống tua, tải tài liệu bài học.
    - Làm BTVN CNTT trực tiếp trên Monaco Code Editor hoặc nộp link GitHub / file ghi âm.
    - Xem điểm số, nhận xét và thanh toán học phí qua mã VietQR.
-6. **Phụ huynh (Parent):**
+8. **Phụ huynh (Parent):**
    - Theo dõi chuyên cần từng buổi, điểm số bài tập và nhận xét của thầy cô.
    - Nhận thông báo học phí và quét mã VietQR thanh toán.
 
@@ -172,6 +186,12 @@ Hệ thống cung cấp một engine gửi tin nhắn đa kênh (Zalo ZNS, SMS, 
   - Hệ thống chạy tiến trình định kỳ (Cron / Scheduled Job) quét các buổi học sắp tới:
     - **Nhắc trước 24 giờ (1 ngày):** Gửi thông báo nhắc lịch học, thời gian, phòng học và danh mục dặn dò (`preparationNotes`: ví dụ mang laptop sạc đầy, cài đặt môi trường NodeJS/Python, hoặc nộp bài tập còn nợ).
     - **Nhắc trước 2 giờ (hoặc tùy biến theo setting):** Gửi nhắc nhở khẩn, đính kèm link phòng học ảo (Google Meet / Zoom URL) nếu là lớp Online hoặc Hybrid.
+- **FR-NOTIF-04 (Cảnh báo Giảng viên đi muộn / chưa vào lớp sau M phút - Teacher Late Alert):**
+  - Cấu hình ngưỡng thời gian: `teacherLateAlertMinutes` (mặc định $M = 10$ phút sau giờ bắt đầu ca học).
+  - Định kỳ mỗi phút, Worker kiểm tra các ca học đang diễn ra (`IN_PROGRESS` hoặc vừa qua giờ `startTime` $M$ phút):
+    - Nếu Giảng viên chính chưa Check-in hoặc chưa bấm "Vào lớp" (`teacher_attendance.checkInTime` IS NULL):
+    - **Hành động 1 (Tức thì với Giảng viên):** Gửi tin nhắn SMS / Zalo ZNS / High-priority App Push: *"Thầy/Cô có ca dạy lớp [Mã lớp] bắt đầu lúc [Giờ], hiện đã quá 10 phút, vui lòng check-in hoặc liên hệ Hotline Giáo vụ"*.
+    - **Hành động 2 (Cảnh báo Quản lý):** Bắn cờ đỏ và tin nhắn khẩn cấp tới Quản lý Đào tạo (Academic Manager) và Chuyên viên Vận hành lớp (Class Coordinator): *"CẢNH BÁO: Giảng viên [Tên GV] chưa vào lớp [Mã lớp] (Phòng [Phòng] / Link [MeetUrl]) sau 10 phút. Đề nghị Vận hành liên hệ kiểm tra ngay!"*.
 
 ---
 
@@ -207,11 +227,51 @@ Hệ thống hỗ trợ song song và phân tách mạch lạc hai hình thức 
 
 ---
 
+### Phân hệ 10: Mua Trực Tiếp Khóa Học Trực Tuyến (Course Store & Direct Enrollment)
+
+Cổng hiển thị và phân phối trực tiếp khóa học trực tuyến (Self-Paced) cho học viên và khách vãng lai:
+
+- **FR-CRS-01 (Duyệt danh mục & Thông tin khóa học):**
+  - Trang Store hiển thị danh sách khóa học với bộ lọc theo chủ đề (CNTT, Ngoại ngữ, Kỹ năng mềm).
+  - Phân loại rõ ràng 2 trạng thái tài chính: **Miễn Phí (`isFree = true`, Giá = 0đ)** và **Có Phí (`isFree = false`, Giá > 0đ)**.
+- **FR-CRS-02 (Đăng ký học ngay với Khóa Miễn Phí - 1-Click Free Enrollment):**
+  - Học viên đã đăng nhập chỉ cần click nút **"Đăng ký học ngay (Free)"**.
+  - Backend tự động khởi tạo bản ghi `enrollments` với trạng thái `ACTIVE` trong vòng 1 giây, mở khóa toàn bộ bài học nhập môn mà không cần qua giỏ hàng hay cổng thanh toán.
+- **FR-CRS-03 (Mua khóa học trả phí & Thanh toán VietQR Động - Instant Direct Checkout):**
+  - Học viên nhấn **"Mua khóa học"** -> Hệ thống tạo đơn hàng và sinh mã VietQR Napas247 động với số tiền chính xác và cú pháp chuyển khoản định danh duy nhất (ví dụ: `LMS CRS [EnrollmentCode]`).
+  - Hỗ trợ thanh toán nhanh bằng ứng dụng ngân hàng di động hoặc thẻ Visa/Mastercard.
+- **FR-CRS-04 (Tự động kích hoạt khóa học qua Webhook Ngân Hàng - Auto-Fulfillment):**
+  - Khi người dùng quét mã VietQR và hoàn tất chuyển khoản, cổng thanh toán/ngân hàng gửi Webhook về Backend `POST /api/v1/webhooks/payment`.
+  - Hệ thống kiểm tra số tiền và nội dung chuyển khoản trong vòng dưới 3 giây, tự động kích hoạt `enrollment.status = ACTIVE`, gửi email biên lai thanh toán và thông báo In-app chào mừng học viên vào học.
+
+---
+
+### Phân hệ 11: Hội Đồng Giám Khảo & Chấm Đồ Án Tốt Nghiệp (Examiner & Capstone Defense)
+
+Phục vụ các khóa học chuyên sâu (nhất là CNTT và Ngoại ngữ nâng cao) có phần bảo vệ đồ án tốt nghiệp hoặc thi thuyết trình cuối khóa:
+
+- **FR-EXAM-01 (Vai trò Hội đồng Giám khảo & Trợ giảng tùy chọn):**
+  - Trợ giảng (TA) là vai trò **tùy chọn (Optional)** trong cấu hình lớp học. Một lớp có thể có hoặc không có Trợ giảng tùy theo số lượng học sinh.
+  - Quản lý Đào tạo có quyền phân công một hoặc nhiều **Giám khảo / Reviewer (`EXAMINER`)** tham gia Hội đồng chấm thi đồ án (Capstone Jury Board). Giám khảo có thể là giảng viên cao cấp, chuyên gia ngoài ngành hoặc đối tác doanh nghiệp.
+- **FR-EXAM-02 (Cổng chấm thi dành riêng cho Giám khảo - Defense Portal):**
+  - Giám khảo có giao diện riêng hiển thị danh sách nhóm / học viên bảo vệ đồ án.
+  - Xem trực tiếp thông tin sản phẩm: Link GitHub Repository, Live Demo URL, Slide thuyết trình PDF, Video demo sản phẩm.
+- **FR-EXAM-03 (Chấm điểm Rubric & Phản biện chuyên sâu):**
+  - Giám khảo chấm điểm theo Rubric đa tiêu chí được cấu hình sẵn:
+    - *Tính hoàn thiện sản phẩm & Chức năng (30%).*
+    - *Kiến trúc kỹ thuật, Code Quality & Clean Code (25%).*
+    - *Kỹ năng thuyết trình & Trả lời phản biện Q&A (25%).*
+    - *Tính sáng tạo & Khả năng ứng dụng thực tế (20%).*
+  - Nhập nhận xét độc lập (Điểm mạnh, Điểm yếu cần cải thiện, Định hướng nghề nghiệp).
+  - Điểm tổng hợp của Hội đồng được tính trung bình tự động và đồng bộ vào Sổ điểm tổng kết của lớp học.
+
+---
+
 ## 4. Bổ Sung Ma Trận User Stories (Acceptance Criteria)
 
 | Mã Story | Đối tượng | Hành động (User Story) | Tiêu chí chấp nhận (Acceptance Criteria) |
 | :--- | :--- | :--- | :--- |
-| **US-SCH-01** | Quản lý Đào tạo | Tạo lớp học với lịch 1 tuần 1 buổi hoặc nhiều buổi | - Chọn được lịch tuần linh hoạt (ví dụ: T2-T4-T6 lúc 19:30).<br>- Tự động sinh ra đúng $N$ buổi học trong bảng `class_sessions`. |
+| **US-SCH-01** | Quản lý Đào tạo | Tạo lớp học với lịch 1 tuần 1 buổi hoặc nhiều buổi | - Chọn được lịch tuần linh hoạt (ví dụ: T2-T4-T6 lúc 19:30).<br>- Tự động sinh ra đúng $N$ buổi học trong bảng `class_sessions`.<br>- Trợ giảng là tùy chọn (có thể để trống). |
 | **US-SCH-02** | Quản lý / Vận hành | Dời ngày học một buổi cụ thể khi có sự cố | - Đổi ngày từ ngày $D$ sang $D'$, nhập lý do dời lịch.<br>- Hệ thống cập nhật và gửi thông báo cho giáo viên, học sinh, phụ huynh. |
 | **US-OPS-01** | Chuyên viên Vận hành | Ghi chú chăm sóc học viên vắng học | - Xem được danh sách học viên vắng sau khi giáo viên điểm danh.<br>- Nhập ghi chú chăm sóc `coordinatorNote`, phụ huynh đọc được ghi chú. |
 | **US-EVAL-01** | Quản lý Đào tạo | Đánh giá chất lượng giáo viên định kỳ | - Form chấm điểm các tiêu chí sư phạm, chuyên môn, đúng giờ.<br>- Cập nhật điểm KPI vào hồ sơ giảng viên. |
@@ -223,6 +283,11 @@ Hệ thống hỗ trợ song song và phân tách mạch lạc hai hình thức 
 | **US-NOTIF-01** | Vận hành / Phụ huynh | Tự động nhận thông báo sĩ số sau 15 phút mở lớp | - Sau $N$ phút (mặc định 15p), hệ thống quét dữ liệu điểm danh.<br>- Bắn tin nhắn danh sách vắng cho Vận hành & GV; gửi tin nhắn riêng cho Phụ huynh học sinh vắng. |
 | **US-NOTIF-02** | Phụ huynh / Học sinh | Nhận tin nhắn nhận xét của giáo viên sau ca học | - Ngay khi GV lưu nhận xét buổi học, hệ thống gửi Zalo/SMS/Push cho Phụ huynh & Học sinh tóm tắt thái độ và kết quả trên lớp. |
 | **US-NOTIF-03** | Học viên / Phụ huynh | Nhận thông báo nhắc lịch học trước 24h và 2h | - Cron tự động quét và gửi tin nhắn trước 24h (kèm dặn dò chuẩn bị) và trước 2h (kèm link Google Meet/Zoom). |
+| **US-NOTIF-04** | Quản lý / Vận hành | Nhận cảnh báo giáo viên đi muộn / chưa vào lớp sau 10p | - Sau 10p từ giờ bắt đầu, nếu GV chưa check-in, tự động gửi SMS/Push cho GV và báo động đỏ cho Quản lý & Vận hành lớp. |
 | **US-VID-01** | Học viên | Xem video bài giảng khóa tự học (Self-Paced) | - Không thể kéo tua tiến thanh thời lượng nếu chưa xem tới mốc đó.<br>- Có thể tua lùi để nghe lại.<br>- Gửi heartbeat 5s/lần cập nhật tiến độ. |
 | **US-VID-02** | Học viên đã hoàn thành | Ôn tập lại bài giảng video sau khi học xong | - Sau khi xem đạt 100% thời lượng, thanh thời gian mở khóa hoàn toàn để học viên tự do tua nhanh/chậm ôn tập. |
+| **US-CRS-01** | Học viên | Đăng ký học ngay khóa học trực tuyến Miễn Phí | - Click "Đăng ký học ngay", hệ thống kích hoạt enrollment `ACTIVE` trong 1 giây, truy cập bài học tức thì không cần thanh toán. |
+| **US-CRS-02** | Học viên | Mua trực tiếp khóa học trực tuyến Trả Phí qua VietQR | - Click "Mua khóa học", hiển thị mã VietQR Napas247 động.<br>- Tự động kích hoạt khóa học trong 3 giây khi nhận webhook chuyển khoản thành công. |
+| **US-EXAM-01** | Giám khảo | Chấm điểm đồ án tốt nghiệp & nhận xét phản biện | - Xem GitHub repo, live demo và slide thuyết trình của học sinh.<br>- Nhập điểm theo 4 tiêu chí Rubric và lưu nhận xét chuyên môn. |
+
 

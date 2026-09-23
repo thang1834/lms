@@ -14,38 +14,36 @@
 Hệ thống LMS được thiết kế riêng cho trung tâm đào tạo hiện đại với trọng tâm là **Công nghệ thông tin (CNTT)**, đồng thời linh hoạt mở rộng hoàn hảo cho **Ngoại ngữ** và các bộ môn khác. Backend được xây dựng theo blueprint **`gmhafiz/go8`** (Go-chi, Layered Architecture, Goose migrations, Taskfile) kết hợp Frontend **Nuxt UI** cho 4 cổng người dùng.
 
 
-Hệ thống tích hợp toàn diện 7 trụ cột nghiệp vụ:
+Hệ thống tích hợp toàn diện 10 trụ cột nghiệp vụ:
 1. **Chuẩn Hóa Phân Quyền Hạt Nhân RBAC (Dynamic RBAC Architecture)**:
    - Các bảng `roles`, `permissions`, `role_permissions`, `user_roles`.
-   - Phân cấp đa tầng: Super Admin, Academic Manager (Giáo vụ trưởng: xếp lớp, lịch dạy, đánh giá giáo viên), Class Coordinator (Vận hành lớp & Chăm sóc học viên), Giảng viên, Trợ giảng, Học viên và Phụ huynh.
+   - Phân cấp 8 vai trò: Super Admin, Academic Manager (Giáo vụ trưởng), Class Coordinator (Vận hành lớp & Chăm sóc học viên), Giảng viên chính, Trợ giảng (Optional), Giám khảo / Hội đồng phản biện (Examiner), Học viên và Phụ huynh.
 2. **Cơ Chế Xếp Lịch Học Linh Hoạt (Flexible Scheduling Engine)**:
-   - Thiết lập lịch định kỳ: 1 tuần 1 buổi (ví dụ: Chủ nhật) hoặc 1 tuần nhiều buổi (T2-T4-T6, T3-T5).
-   - Tùy biến từng buổi: dời ngày học, đổi giờ ca dạy, đổi phòng học cơ sở hoặc đổi link Google Meet/Zoom, bù buổi học phát sinh, phân công giáo viên dạy thay theo buổi.
+   - Thiết lập lịch định kỳ: 1 tuần 1 buổi hoặc 1 tuần nhiều buổi. Trợ giảng là tùy chọn (không bắt buộc).
+   - Tùy biến từng buổi: dời ngày học, đổi giờ ca dạy, đổi phòng học hoặc đổi link Meet/Zoom, phân công giáo viên dạy thay.
 3. **Mô Hình Vận Hành Lớp & Chăm Sóc Học Viên (Class Operations & Student Care)**:
-   - Mỗi lớp học do bộ ba phụ trách: Giảng viên chính + Trợ giảng + Chuyên viên Vận hành lớp (Coordinator).
-   - Chuyên viên Vận hành theo dõi chuyên cần, liên hệ học sinh vắng, nhập `coordinatorNote` gửi phụ huynh, đôn đốc nộp BTVN trước hạn.
+   - Quản lý lớp đồng hành, Chuyên viên Vận hành nhận cảnh báo GV trễ, theo dõi chuyên cần, nhập `coordinatorNote` gửi phụ huynh.
 4. **Điểm Danh Hai Chiều & Đánh Giá Chất Lượng Giáo Viên**:
-   - **Điểm danh học sinh:** Phân loại rõ Có mặt Offline (tại lớp), Có mặt Online (qua Meet/Zoom), Đi trễ, Vắng có phép/không phép.
-   - **Điểm danh giáo viên (Teacher Check-in / Timesheet):** Chấm công giờ dạy thực tế đối soát thù lao.
-   - **Đánh giá giáo viên theo từng buổi học:** Học sinh đánh giá nhanh 1-5 sao và mức độ hiểu bài sau mỗi ca học để phát cảnh báo cờ đỏ kịp thời.
-5. **Hệ Thống Tin Nhắn & Thông Báo Tự Động (Automated Notification Engine)**:
-   - *Điểm danh sau 15 phút:* Tự động quét sĩ số, gửi tin báo vắng cho phụ huynh và báo cáo tổng hợp cho GV & Vận hành lớp (hoặc thông báo lớp đủ 100%).
-   - *Nhận xét sau buổi học:* Giáo viên lưu nhận xét thái độ và bài tập $\to$ Tự động gửi tin nhắn/Zalo ZNS tới Phụ huynh & Học sinh.
-   - *Nhắc lịch học trước 24h & 2h:* Tự động gửi tin nhắc lịch, link phòng học trực tuyến và dặn dò đồ dùng học tập cần chuẩn bị.
-6. **Phân Định 2 Mô Hình Khóa Học Trực Tuyến & Video Player Chống Tua**:
-   - *Mô hình 1 - Khóa học Online Tự học (Self-Paced):* Video nhúng YouTube **cấm tua nhanh** (chỉ được xem tuần tự hoặc tua lùi, mở khóa tua khi hoàn thành 95%), hỏi đáp theo timestamp video và ghi chú cá nhân.
-   - *Mô hình 2 - Lớp học Online Trực tiếp & Hybrid (Virtual Live & Hybrid):* Học trực tiếp qua link phòng học ảo (Meet/Zoom), có lịch học cố định, điểm danh từng buổi và gửi nhận xét.
-7. **Kế Thừa & Tinh Gọn Tính Năng Moodle & Frappe LMS**:
-   - *Activity Completion & Drip Content:* Mở khóa bài học tuần tự theo tiến độ.
-   - *Weighted Gradebook:* Sổ điểm đa trọng số (Chuyên cần %, BTVN %, Giữa kỳ %, Cuối khóa %).
-   - *Question Bank & Random Quiz:* Ngân hàng câu hỏi & sinh đề trắc nghiệm ngẫu nhiên.
-   - *Course Template Cloning:* Nhân bản khóa học/lớp học chỉ với 1 click.
-   - *Public Verifiable Certificate:* Chứng chỉ số có link xác thực công khai `/verify/[code]`.
-8. **Học Liệu & Bài Tập CNTT (Monaco Editor)**:
-   - Bài giảng nhúng YouTube, đính kèm slide PDF, source code mẫu.
-   - Trình soạn thảo **Monaco Code Editor** làm bài tập trên web, nộp link GitHub / file ghi âm ngoại ngữ.
-9. **Thanh Toán Học Phí Đa Kênh**:
-   - Sinh mã **VietQR** động (chuẩn Napas247), thanh toán thẻ **Visa/Mastercard**, và ghi nhận thu **tiền mặt/quẹt thẻ tại quầy** có xuất biên lai PDF.
+   - Điểm danh học sinh lớp Hybrid (Offline/Online/Late/Absent).
+   - Giáo viên Check-in/out ca dạy chấm công.
+   - Học sinh đánh giá nhanh 1-5 sao sau mỗi buổi học (Per-Session Feedback).
+5. **Hệ Thống Tin Nhắn & Cảnh Báo Tự Động (Automated Notification Engine)**:
+   - *Điểm danh sau 15 phút:* Tự động quét sĩ số vắng/đủ, gửi tin báo vắng cho phụ huynh và báo cáo cho Vận hành & GV.
+   - *Cảnh báo giáo viên đi muộn sau 10 phút:* Nếu sau 10p GV chưa check-in $\to$ gửi SMS khẩn cho GV và báo động đỏ cho Quản lý & Vận hành lớp.
+   - *Nhận xét sau buổi học:* GV lưu nhận xét $\to$ gửi tin tóm tắt tới Phụ huynh & Học sinh.
+   - *Nhắc lịch học trước 24h & 2h:* Gửi tin nhắc lịch, link Meet và dặn dò đồ dùng học tập.
+6. **Mua Trực Tiếp Khóa Học Trực Tuyến (Course Store & Direct Enrollment)**:
+   - Khóa học Miễn Phí (Free): Đăng ký học ngay 1-Click không cần thanh toán.
+   - Khóa học Trả Phí (Paid): Mua trực tiếp, sinh mã VietQR Napas247 động, tự động kích hoạt trong 3s qua Webhook.
+7. **Hội Đồng Giám Khảo & Chấm Đồ Án Tốt Nghiệp (Capstone Project Defense)**:
+   - Giám khảo (Examiner) đăng nhập cổng chấm thi, xem GitHub repo, live demo, slide thuyết trình.
+   - Chấm điểm theo Rubric 4 tiêu chí (Hoàn thiện 30%, Kiến trúc/Clean Code 25%, Thuyết trình 25%, Sáng tạo 20%).
+8. **Trình Phát Video Chống Tua Cho Khóa Học Tự Học (Anti-Seeking Video Player)**:
+   - Cấm tua nhanh vượt quá mốc đã xem, hỗ trợ tua lùi ôn tập; client heartbeat 5s chống gian lận DevTools; mở khóa tua tự do khi hoàn thành 100%.
+9. **Kế Thừa & Tinh Gọn Tính Năng Moodle & Frappe LMS**:
+   - Drip content tuần tự, Sổ điểm đa trọng số (Weighted Gradebook), Timestamped Q&A trong video, Chứng chỉ số xác minh công khai `/verify/[code]`.
+10. **Học Liệu & Bài Tập CNTT (Monaco Editor)**:
+    - Trình soạn thảo Monaco Editor làm bài tập trên web, nộp link GitHub / file ghi âm.
 
 ---
 
@@ -54,12 +52,13 @@ Hệ thống tích hợp toàn diện 7 trụ cột nghiệp vụ:
 | Vai trò (Role) | Mã Role | Quyền hạn chính |
 | :--- | :--- | :--- |
 | **Super Admin** | `SUPER_ADMIN` | Toàn quyền cấu hình hệ thống, tạo vai trò mới, quản lý tài chính & báo cáo |
-| **Quản lý Đào tạo / Giáo vụ** | `ACADEMIC_MANAGER` | Quản lý khóa học, xếp lớp, xếp lịch học linh hoạt, phân công giáo viên, đánh giá KPI giáo viên |
-| **Chuyên viên Vận hành lớp & CSKH** | `CLASS_COORDINATOR` | Đồng hành cùng lớp, theo dõi sĩ số, liên hệ học sinh vắng/trễ, đôn đốc BTVN, hỗ trợ phụ huynh |
+| **Quản lý Đào tạo / Giáo vụ** | `ACADEMIC_MANAGER` | Quản lý khóa học, xếp lớp, xếp lịch học linh hoạt, phân công giáo viên & mời hội đồng chấm thi |
+| **Chuyên viên Vận hành lớp & CSKH** | `CLASS_COORDINATOR` | Đồng hành cùng lớp, theo dõi sĩ số, nhận cảnh báo GV trễ, liên hệ học sinh vắng/trễ, hỗ trợ phụ huynh |
 | **Giảng viên chính** | `TEACHER` | Xem thời khóa biểu, Check-in ca dạy, điểm danh học sinh, upload tài liệu, giao bài & chấm điểm |
-| **Trợ giảng** | `TA` | Hỗ trợ lớp học, điểm danh, hỗ trợ giải đáp thắc mắc bài tập code cho học viên |
-| **Học viên** | `STUDENT` | Xem lịch học, học bài YouTube, làm code trên Monaco Editor, nộp bài, thanh toán học phí VietQR |
-| **Phụ huynh** | `PARENT` | Theo dõi chuyên cần của con, xem điểm số & nhận xét, thanh toán học phí qua mã VietQR |
+| **Trợ giảng (Tùy chọn)** | `TA` | Vai trò tùy chọn: Hỗ trợ lớp học, điểm danh, hỗ trợ giải đáp thắc mắc bài tập code cho học viên |
+| **Giám khảo / Phản biện** | `EXAMINER` | Xem sản phẩm đồ án tốt nghiệp, xem GitHub & Live Demo, chấm điểm theo Rubric và nhập nhận xét |
+| **Học viên** | `STUDENT` | Mua khóa học trực tiếp (Free/VietQR), xem video chống tua, làm code Monaco Editor, nộp bài |
+| **Phụ huynh** | `PARENT` | Theo dõi chuyên cần của con, nhận cảnh báo vắng sau 15p, xem điểm số & nhận xét, thanh toán VietQR |
 
 ---
 

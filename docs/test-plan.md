@@ -63,6 +63,7 @@ flowchart TD
 | **TC-NOTIF-01** | Thông báo tự động | Phát cảnh báo điểm danh sau 15 phút vào lớp | 1. Buổi học bắt đầu lúc 19:30, có 2 học viên vắng.<br>2. Lúc 19:45 (sau 15p), trigger cảnh báo kích hoạt. | Phụ huynh 2 học viên vắng nhận được tin nhắn báo con chưa đến lớp; GV & Vận hành lớp nhận tin báo cáo vắng 2/20. | **P0** |
 | **TC-NOTIF-02** | Thông báo tự động | Tự động gửi nhận xét buổi học tới Phụ huynh | 1. GV nhập nhận xét thái độ và BTVN trên lớp.<br>2. Bấm [Lưu nhận xét buổi học]. | Hệ thống tự động gửi tin nhắn tóm tắt kết quả ca học tới Phụ huynh & Học sinh; ghi log thành công vào `notification_logs`. | **P0** |
 | **TC-NOTIF-03** | Thông báo tự động | Cron nhắc nhở lịch học trước 24h & 2h | 1. Cron job quét ca học ngày mai và ca học sắp bắt đầu trong 2h.<br>2. Kích hoạt phát tin nhắn. | Học viên & Phụ huynh nhận tin nhắn nhắc lịch kèm dặn dò đồ dùng học tập và link phòng học ảo (Google Meet/Zoom). | **P1** |
+| **TC-NOTIF-04** | Thông báo tự động | Cảnh báo Giáo viên đi muộn / chưa vào lớp sau 10p | 1. Ca học bắt đầu lúc 19:30, đến 19:40 giáo viên chưa check-in.<br>2. Worker kiểm tra và kích hoạt cảnh báo. | Gửi tin SMS/Push khẩn cho Giảng viên; bắn cờ đỏ trên Dashboard Quản lý Đào tạo & Vận hành lớp. | **P0** |
 
 ---
 
@@ -77,12 +78,23 @@ flowchart TD
 
 ---
 
-### Nhóm 5: Thanh Toán Đa Kênh & VietQR Động (Payments & VietQR)
+### Nhóm 5: Cổng Mua Khóa Học & Thanh Toán VietQR (Store & Payments)
 
 | Mã Test Case | Phân hệ | Mô tả kịch bản | Các bước thực hiện | Kết quả mong đợi | Mức độ |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **TC-PAY-01** | VietQR | Sinh mã VietQR động chuẩn Napas247 | 1. Mở hóa đơn học phí trị giá 3.500.000 đ.<br>2. Nhấn [Thanh toán qua VietQR]. | Ảnh mã QR hiển thị rõ nét; dùng app ngân hàng thật quét mã tự động điền đúng Số tiền `3500000` và Nội dung `HP [MãHV] [MãHĐ]`. | **P0** |
+| **TC-STORE-01** | Khóa học Free | Đăng ký học ngay khóa học trực tuyến Miễn Phí | 1. Học viên bấm nút [Đăng ký học ngay (Free)].<br>2. Kiểm tra quyền truy cập bài học. | Hệ thống tạo `enrollment` trạng thái `ACTIVE` trong 1 giây, mở khóa ngay bài học 1 mà không cần thanh toán. | **P0** |
+| **TC-STORE-02** | Khóa học Paid | Mua khóa học Trả Phí qua VietQR & Webhook | 1. Chọn mua khóa học trả phí 1.500.000 đ.<br>2. Quét mã VietQR chuyển khoản.<br>3. Webhook ngân hàng bắn về API. | Khóa học được tự động kích hoạt trạng thái `ACTIVE` trong vòng 3 giây; gửi email hóa đơn và thông báo thành công. | **P0** |
+| **TC-PAY-01** | VietQR | Sinh mã VietQR động chuẩn Napas247 cho học phí lớp | 1. Mở hóa đơn học phí trị giá 3.500.000 đ.<br>2. Nhấn [Thanh toán qua VietQR]. | Ảnh mã QR hiển thị rõ nét; dùng app ngân hàng thật quét mã tự động điền đúng Số tiền `3500000` và Nội dung `HP [MãHV] [MãHĐ]`. | **P0** |
 | **TC-PAY-02** | Tiền mặt | Thu ngân xác nhận thu tiền mặt tại quầy | 1. Học viên nộp tiền mặt tại cơ sở.<br>2. Thu ngân bấm [Xác nhận thu tiền mặt]. | Trạng thái hóa đơn chuyển sang `PAID`, lưu vết người thu và xuất file biên lai điện tử PDF hợp lệ. | **P0** |
+
+---
+
+### Nhóm 6: Hội Đồng Giám Khảo & Chấm Đồ Án Tốt Nghiệp (Capstone Defense)
+
+| Mã Test Case | Phân hệ | Mô tả kịch bản | Các bước thực hiện | Kết quả mong đợi | Mức độ |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **TC-CAP-01** | Giám khảo | Giám khảo chấm điểm đồ án theo Rubric 4 tiêu chí | 1. Đăng nhập tài khoản vai trò Examiner.<br>2. Mở đồ án của học viên, xem GitHub & Live Demo.<br>3. Nhập 4 đầu điểm Rubric và nhận xét.<br>4. Nhấn [Nộp phiếu chấm]. | Hệ thống tính điểm trung bình có trọng số chính xác, lưu phiếu chấm và cập nhật vào Sổ điểm tổng kết lớp. | **P0** |
+| **TC-SCH-01** | Xếp lớp | Mở lớp học với Trợ giảng là tùy chọn (Optional) | 1. Quản lý Đào tạo tạo lớp mới, để trống ô Trợ giảng (TA).<br>2. Cấu hình lịch tuần T2-T4-T6 và bấm Lưu. | Hệ thống tạo lớp và sinh đầy đủ các buổi học thành công mà không báo lỗi thiếu TA. | **P0** |
 
 ---
 

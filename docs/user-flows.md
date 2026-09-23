@@ -302,3 +302,97 @@ sequenceDiagram
 | [📄 Tải Slide PDF]   [💻 Tải Code Mẫu]   [✅ Hoàn thành] | +-----------------+ |
 +-------------------------------------------------------+---------------------+
 ```
+
+### 7.4 Giao diện Cổng Chấm Thi Giám Khảo Đồ Án Tốt Nghiệp (Capstone Jury Defense Portal)
+```
++-----------------------------------------------------------------------------+
+| HỘI ĐỒNG CHẤM ĐỒ ÁN TỐT NGHIỆP | Lớp: LMS-FE-K32 | Giám khảo: TS. Lê Văn Tuấn |
++-----------------------------------------------------------------------------+
+| Đề tài: Nền tảng Đặt xe Công nghệ Real-time (Nhóm 02: 3 thành viên)          |
+| Tài liệu: [🔗 GitHub Repo] [🌐 Live Demo] [📊 Slide PDF] [🎥 Video Demo]     |
+| --------------------------------------------------------------------------- |
+| PHIẾU ĐÁNH GIÁ RUBRIC CỦA GIÁM KHẢO:                                        |
+| 1. Mức độ hoàn thiện sản phẩm & Chức năng (30%):    [ 90 / 100 ]            |
+| 2. Kiến trúc mã nguồn, Code Quality & Clean Code (25%): [ 85 / 100 ]         |
+| 3. Kỹ năng thuyết trình & Trả lời phản biện Q&A (25%):  [ 95 / 100 ]         |
+| 4. Tính sáng tạo, Đột phá & Khả năng ứng dụng (20%):   [ 80 / 100 ]         |
+| --------------------------------------------------------------------------- |
+| => ĐIỂM TỔNG HỢP: 88.0 / 100  [✅ ĐẠT YÊU CẦU TỐT NGHIỆP]                   |
+|                                                                             |
+| Nhận xét chuyên môn & Góp ý định hướng:                                     |
+| +-------------------------------------------------------------------------+ |
+| | Kiến trúc WebSocket thời gian thực hoạt động tốt. Cần tối ưu lại index  | |
+| | PostgreSQL để chịu tải cao hơn. Nhóm phản biện rất tự tin và sắc bén.   | |
+| +-------------------------------------------------------------------------+ |
+|                                                    [ 💾 NỘP PHIẾU CHẤM ]    |
++-----------------------------------------------------------------------------+
+```
+
+---
+
+## 8. Luồng 7: Giám Khảo Chấm Điểm Đồ Án Tốt Nghiệp & Phản Biện (Capstone Defense)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Examiner as Giám khảo / Hội đồng
+    participant UI as Examiner Portal (/examiner)
+    participant API as Backend Server
+    participant DB as PostgreSQL Database
+    actor Student as Học viên / Nhóm đồ án
+
+    Examiner ->> UI: Đăng nhập với quyền EXAMINER
+    UI ->> Examiner: Hiển thị danh sách đề tài đồ án cần chấm
+    Examiner ->> UI: Chọn đề tài "Nền tảng Đặt xe Công nghệ"
+    UI ->> API: GET /api/v1/capstone/projects/:id
+    API ->> DB: Lấy chi tiết đề tài, link GitHub, demo URL, slide
+    DB -->> API: Trả về thông tin đồ án
+    API -->> UI: Hiển thị giao diện chấm thi & tài liệu
+
+    Note over Examiner, UI: Phiên bảo vệ đồ án trực tiếp / trực tuyến
+    Student ->> Examiner: Thuyết trình đề tài & demo sản phẩm
+    Examiner ->> Student: Đặt câu hỏi phản biện kỹ thuật
+    Student ->> Examiner: Trả lời phản biện Q&A
+
+    Examiner ->> UI: Nhập điểm Rubric 4 tiêu chí & Lời nhận xét
+    Examiner ->> UI: Bấm [ Nộp Phiếu Chấm ]
+    UI ->> API: POST /api/v1/capstone/evaluations
+    API ->> DB: Lưu phiếu chấm độc lập vào capstone_evaluations
+    API ->> DB: Tự động tính điểm trung bình Hội đồng vào Sổ điểm lớp
+    API -->> UI: Thông báo nộp điểm thành công
+    API -->> Student: Nhận thông báo kết quả chấm thi & nhận xét của Giám khảo
+```
+
+---
+
+## 9. Luồng 8: Mua Trực Tiếp Khóa Học Trực Tuyến & Thanh Toán VietQR Tự Động Kích Hoạt
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Student as Học viên
+    actor Bank as Ngân hàng / Cổng TT
+    participant UI as Course Storefront
+    participant API as Backend Server
+    participant DB as PostgreSQL Database
+
+    Student ->> UI: Duyệt danh mục khóa học trực tuyến (/courses)
+    alt Khóa học Miễn Phí (isFree = true)
+        Student ->> UI: Nhấn [ Đăng ký học ngay (Free) ]
+        UI ->> API: POST /api/v1/courses/:id/enroll
+        API ->> DB: Tạo enrollment trạng thái ACTIVE
+        API -->> UI: Kích hoạt thành công, mở ngay bài học đầu tiên
+    else Khóa học Trả Phí (isFree = false)
+        Student ->> UI: Nhấn [ Mua khóa học ]
+        UI ->> API: POST /api/v1/courses/:id/checkout
+        API ->> DB: Tạo hóa đơn tuition_invoices kèm VietQR payload
+        API -->> UI: Trả về mã VietQR Napas247 động
+        UI ->> Student: Hiển thị mã VietQR kèm số tiền & cú pháp chuyển khoản
+        Student ->> Bank: Mở App Banking quét mã VietQR và xác nhận chuyển khoản
+        Bank ->> API: POST /api/v1/webhooks/payment (Số tiền, Mã hóa đơn)
+        API ->> API: Khớp nội dung & số tiền thanh toán
+        API ->> DB: Cập nhật invoice PAID & kích hoạt enrollment ACTIVE
+        API -->> Student: Bắn Email biên lai & Thông báo chào mừng học viên vào học
+    end
+```
+

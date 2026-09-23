@@ -113,6 +113,7 @@ erDiagram
     Permission ||--o{ RolePermission : defines
 
     User ||--o{ TeacherProfile : has
+    User ||--o{ ExaminerProfile : has
     User ||--o{ StudentProfile : has
     User ||--o{ ParentProfile : has
     ParentProfile ||--o{ ParentStudent : connects
@@ -125,7 +126,7 @@ erDiagram
     
     Course ||--o{ Class : instances
     TeacherProfile ||--o{ Class : teaches_main
-    TeacherProfile ||--o{ Class : teaches_ta
+    TeacherProfile ||--o{ Class : teaches_ta_optional
     User ||--o{ Class : coordinates
     
     Class ||--o{ ClassSession : schedules
@@ -140,6 +141,11 @@ erDiagram
     
     TeacherProfile ||--o{ TeacherEvaluation : evaluated
     User ||--o{ TeacherEvaluation : audits
+
+    Class ||--o{ CapstoneProject : hosts_capstone
+    StudentProfile ||--o{ CapstoneProject : submits_capstone
+    CapstoneProject ||--o{ CapstoneEvaluation : graded_by
+    ExaminerProfile ||--o{ CapstoneEvaluation : reviews_defense
 
     Lesson ||--o{ LessonDiscussion : has_qa
     User ||--o{ LessonDiscussion : posts_qa
@@ -224,30 +230,37 @@ erDiagram
    - `contractType` (Enum: `FULLTIME`, `PARTTIME`, `VISITING`).
    - `kpiRating` (Decimal, Default `5.0`): Điểm đánh giá trung bình từ học viên và giáo vụ.
 
-7. **`student_profiles`**:
+7. **`examiner_profiles`** (Hội đồng Giám khảo / Chuyên gia phản biện đồ án):
+   - `id` (UUID, PK).
+   - `userId` (UUID, FK -> `users.id`, Unique).
+   - `title` (String): Chức danh / Học hàm (ví dụ: "Senior Solution Architect", "Tiến sĩ KHMT", "Giám khảo Trưởng").
+   - `company` (String, Nullable): Tổ chức / Doanh nghiệp công tác.
+   - `bio` (Text, Nullable): Kinh nghiệm chuyên môn và phản biện.
+
+8. **`student_profiles`**:
    - `id` (UUID, PK).
    - `userId` (UUID, FK -> `users.id`, Unique).
    - `studentCode` (String, Unique): Mã học viên (ví dụ: `HV-2026-001`).
    - `dateOfBirth` (Date, Nullable).
    - `currentLevel` (String, Nullable).
 
-8. **`parent_profiles`**:
+9. **`parent_profiles`**:
    - `id` (UUID, PK).
    - `userId` (UUID, FK -> `users.id`, Unique).
    - `address` (String, Nullable).
 
-9. **`parent_students`**:
-   - `id` (UUID, PK).
-   - `parentId` (UUID, FK -> `parent_profiles.id`).
-   - `studentId` (UUID, FK -> `student_profiles.id`).
-   - `relationship` (String): Bố, Mẹ, Người giám hộ.
-   - Unique Constraint: `(parentId, studentId)`.
+10. **`parent_students`**:
+    - `id` (UUID, PK).
+    - `parentId` (UUID, FK -> `parent_profiles.id`).
+    - `studentId` (UUID, FK -> `student_profiles.id`).
+    - `relationship` (String): Bố, Mẹ, Người giám hộ.
+    - Unique Constraint: `(parentId, studentId)`.
 
 ---
 
 #### Nhóm 3: Đào Tạo, Khóa Học & Lớp Học Đa Hình Thức (Courses & Classes)
 
-10. **`courses`**:
+11. **`courses`**:
     - `id` (UUID, PK).
     - `title` (String): Tên khóa học.
     - `slug` (String, Unique).
@@ -255,10 +268,12 @@ erDiagram
     - `courseType` (Enum: `SELF_PACED_ONLINE`, `INSTRUCTOR_LED`): Phân loại khóa học tự học (cấm tua video) hay lớp có giáo viên.
     - `subjectType` (Enum: `IT`, `LANGUAGE`, `GENERAL`).
     - `thumbnailUrl` (String, Nullable).
-    - `price` (Decimal): Học phí niêm yết.
+    - `isFree` (Boolean, Default `false`): Khóa học miễn phí (học sinh đăng ký học ngay 1-click).
+    - `price` (Decimal, Default `0`): Học phí niêm yết (nếu trả phí thì thanh toán VietQR động).
+    - `enrollmentCount` (Int, Default `0`): Số lượng học viên đã đăng ký.
     - `isPublished` (Boolean, Default `false`).
 
-11. **`gradebook_configs`** (Cấu hình trọng số điểm theo chuẩn Moodle):
+12. **`gradebook_configs`** (Cấu hình trọng số điểm theo chuẩn Moodle):
     - `id` (UUID, PK).
     - `courseId` (UUID, FK -> `courses.id`, Unique).
     - `attendanceWeight` (Int, Default `10`): % điểm chuyên cần.
@@ -267,13 +282,13 @@ erDiagram
     - `finalProjectWeight` (Int, Default `40`): % điểm đồ án / thi cuối khóa.
     - *Ràng buộc:* Tổng trọng số phải bằng 100%.
 
-12. **`modules`**:
+13. **`modules`**:
     - `id` (UUID, PK).
     - `courseId` (UUID, FK -> `courses.id`).
     - `title` (String): Tên chương.
     - `orderIndex` (Int): Thứ tự.
 
-13. **`lessons`**:
+14. **`lessons`**:
     - `id` (UUID, PK).
     - `moduleId` (UUID, FK -> `modules.id`).
     - `title` (String): Tên bài học.
@@ -283,13 +298,13 @@ erDiagram
     - `durationMinutes` (Int, Default `0`).
     - `isDripLocked` (Boolean, Default `false`): Mở khóa tuần tự theo tiến độ học (tính năng kế thừa Moodle).
 
-14. **`classes`** (Lớp học với sự tham gia của 3 vai trò: Giáo viên, Trợ giảng và Vận hành/CSKH):
+15. **`classes`** (Lớp học với sự tham gia của 3 vai trò: Giáo viên, Trợ giảng và Vận hành/CSKH):
     - `id` (UUID, PK).
     - `courseId` (UUID, FK -> `courses.id`).
     - `name` (String): Mã lớp (ví dụ: `FE-K32`).
     - `classType` (Enum: `OFFLINE`, `ONLINE_VIRTUAL`, `HYBRID`).
-    - `mainTeacherId` (UUID, FK -> `teacher_profiles.id`): Giảng viên chính.
-    - `taTeacherId` (UUID, FK -> `teacher_profiles.id`, Nullable): Trợ giảng.
+    - `mainTeacherId` (UUID, FK -> `teacher_profiles.id`): Giảng viên chính (Bắt buộc).
+    - `taTeacherId` (UUID, FK -> `teacher_profiles.id`, Nullable): **Trợ giảng - Tùy chọn (Optional)** theo quy mô lớp học.
     - `coordinatorId` (UUID, FK -> `users.id`, Nullable): **Chuyên viên Vận hành lớp & Chăm sóc học viên (Class Coordinator / Care)**.
     - `roomName` (String, Nullable): Tên phòng học mặc định.
     - `meetUrl` (String, Nullable): Link Google Meet / Zoom mặc định.
@@ -330,7 +345,7 @@ erDiagram
 
 #### Nhóm 4: Điểm Danh, Chấm Công & Đánh Giá Chất Lượng Giáo Viên
 
-17. **`teacher_attendance`** (Chấm công ca dạy giáo viên):
+18. **`teacher_attendance`** (Chấm công ca dạy giáo viên):
     - `id` (UUID, PK).
     - `sessionId` (UUID, FK -> `class_sessions.id`, Unique).
     - `teacherId` (UUID, FK -> `teacher_profiles.id`).
@@ -339,6 +354,7 @@ erDiagram
     - `actualDurationMinutes` (Int, Default `0`).
     - `note` (Text, Nullable).
     - `status` (Enum: `ON_TIME`, `LATE`, `ABSENT`, `SUBSTITUTED`).
+    - `lateAlertSentAt` (Timestamp, Nullable): Thời điểm hệ thống đã tự động kích hoạt cảnh báo giáo viên đi muộn/chưa vào lớp sau 10 phút.
 
 18. **`student_attendance`** (Điểm danh học sinh đa mô hình):
     - `id` (UUID, PK).
@@ -499,9 +515,9 @@ erDiagram
 
 30. **`notification_templates`** (Mẫu nội dung thông báo đa kênh):
     - `id` (UUID, PK).
-    - `code` (String, Unique): Mã mẫu thông báo (`ATTENDANCE_ALERT_ABSENT`, `ATTENDANCE_ALERT_FULL`, `TEACHER_SESSION_FEEDBACK`, `CLASS_REMINDER_24H`, `CLASS_REMINDER_2H`).
+    - `code` (String, Unique): Mã mẫu thông báo (`ATTENDANCE_ALERT_ABSENT`, `ATTENDANCE_ALERT_FULL`, `TEACHER_SESSION_FEEDBACK`, `CLASS_REMINDER_24H`, `CLASS_REMINDER_2H`, `TEACHER_LATE_ALERT`).
     - `title` (String): Tiêu đề thông báo.
-    - `contentTemplate` (Text): Mẫu nội dung hỗ trợ placeholder (`{{studentName}}`, `{{className}}`, `{{sessionTime}}`, `{{meetingUrl}}`, `{{feedbackSummary}}`).
+    - `contentTemplate` (Text): Mẫu nội dung hỗ trợ placeholder (`{{teacherName}}`, `{{studentName}}`, `{{className}}`, `{{sessionTime}}`, `{{meetingUrl}}`, `{{feedbackSummary}}`).
     - `channels` (JSON): Mảng kênh áp dụng (ví dụ: `["ZALO_ZNS", "SMS", "IN_APP", "PUSH", "EMAIL"]`).
     - `isActive` (Boolean, Default `true`).
 
@@ -519,26 +535,60 @@ erDiagram
 
 ---
 
+#### Nhóm 10: Hội Đồng Giám Khảo & Chấm Đồ Án Tốt Nghiệp (Capstone Jury & Defense)
+
+32. **`capstone_projects`** (Đề tài và sản phẩm đồ án tốt nghiệp của học viên/nhóm):
+    - `id` (UUID, PK).
+    - `classId` (UUID, FK -> `classes.id`).
+    - `studentId` (UUID, FK -> `student_profiles.id`, Nullable - nếu làm cá nhân).
+    - `teamName` (String, Nullable - nếu làm theo nhóm).
+    - `title` (String): Tên đề tài đồ án tốt nghiệp.
+    - `description` (Text): Tóm tắt chức năng và mục tiêu đề tài.
+    - `githubUrl` (String, Nullable): Đường dẫn kho mã nguồn.
+    - `demoUrl` (String, Nullable): Link sản phẩm chạy trực tiếp (Live Demo).
+    - `slideUrl` (String, Nullable): Link slide thuyết trình (PDF/Canva/Google Slide).
+    - `videoUrl` (String, Nullable): Link video giới thiệu sản phẩm.
+    - `status` (Enum: `SUBMITTED`, `DEFENSE_SCHEDULED`, `PASSED`, `REVISION_REQUIRED`).
+    - `submittedAt` (Timestamp, Default `now()`).
+
+33. **`capstone_evaluations`** (Phiếu chấm điểm và phản biện từ Hội đồng Giám khảo):
+    - `id` (UUID, PK).
+    - `projectId` (UUID, FK -> `capstone_projects.id`).
+    - `examinerId` (UUID, FK -> `examiner_profiles.id`): Giám khảo thực hiện chấm điểm.
+    - `scoreCompletion` (Decimal, 0-100): Tiêu chí hoàn thiện chức năng sản phẩm (Trọng số 30%).
+    - `scoreArchitecture` (Decimal, 0-100): Tiêu chí kiến trúc hệ thống & Clean Code (Trọng số 25%).
+    - `scorePresentation` (Decimal, 0-100): Tiêu chí kỹ năng thuyết trình & Q&A phản biện (Trọng số 25%).
+    - `scoreCreativity` (Decimal, 0-100): Tiêu chí sáng tạo & ứng dụng thực tiễn (Trọng số 20%).
+    - `finalScore` (Decimal, 0-100): Điểm tổng hợp theo trọng số của giám khảo này.
+    - `evaluationNotes` (Text): Nhận xét chi tiết (Điểm mạnh, Điểm yếu cần khắc phục, Lời khuyên nghề nghiệp).
+    - `evaluatedAt` (Timestamp, Default `now()`).
+    - Unique Constraint: `(projectId, examinerId)`: Mỗi giám khảo chỉ nộp 1 phiếu chấm chính thức.
+
+---
+
 ## 3. Ma Trận Phân Quyền Hạt Nhân RBAC (Granular RBAC Matrix)
 
-| Chức năng / Permission Code | Super Admin | Academic Manager (Giáo vụ) | Class Coordinator (Vận hành/CSKH) | Teacher (Giảng viên) | Student (Học viên) | Parent (Phụ huynh) |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| Quản trị hệ thống, Cấu hình RBAC | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Tạo khóa học, phân công giáo viên | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Xếp lớp, cấu hình lịch học linh hoạt | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Dời lịch học / đổi phòng / đổi Meet link | ✅ | ✅ | ✅ (lớp phụ trách) | ⚠️ (đề xuất) | ❌ | ❌ |
-| Cấu hình thời gian gửi tin tự động | ✅ | ✅ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ |
-| Đánh giá chất lượng giáo viên (Audit) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Đánh giá giáo viên theo từng buổi | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| Ghi chú chăm sóc học sinh vắng | ✅ | ✅ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ |
-| Check-in/out ca dạy (chấm công) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Điểm danh học sinh lớp Hybrid | ✅ | ✅ | ✅ (hỗ trợ) | ✅ | ❌ | ❌ |
-| Upload tài liệu học tập, code mẫu | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| Giao bài tập, chấm điểm theo rubric | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Làm BTVN trên Monaco Code Editor | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| Xem chuyên cần, điểm số của con | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Thanh toán học phí VietQR, thẻ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Xác nhận thu tiền mặt tại quầy | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Chức năng / Permission Code | Super Admin | Academic Manager (Giáo vụ) | Class Coordinator (Vận hành/CSKH) | Teacher (Giảng viên) | Examiner (Giám khảo) | Student (Học viên) | Parent (Phụ huynh) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Quản trị hệ thống, Cấu hình RBAC | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Tạo khóa học, phân công giáo viên & mời hội đồng | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Xếp lớp, cấu hình lịch học linh hoạt (TA optional) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Dời lịch học / đổi phòng / đổi Meet link | ✅ | ✅ | ✅ (lớp phụ trách) | ⚠️ (đề xuất) | ❌ | ❌ | ❌ |
+| Cấu hình thời gian gửi tin tự động & cảnh báo trễ | ✅ | ✅ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ | ❌ |
+| Đánh giá chất lượng giáo viên (Audit định kỳ) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Đánh giá giáo viên theo từng buổi học | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Ghi chú chăm sóc học sinh vắng (`coordinatorNote`) | ✅ | ✅ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ | ❌ |
+| Check-in/out ca dạy (chấm công giáo viên) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Điểm danh học sinh lớp Hybrid (Offline/Online) | ✅ | ✅ | ✅ (hỗ trợ) | ✅ | ❌ | ❌ | ❌ |
+| Upload tài liệu học tập, slide, code mẫu | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Giao bài tập, chấm BTVN theo rubric | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Chấm điểm đồ án tốt nghiệp & thuyết trình cuối khóa | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| Mua trực tiếp khóa học trực tuyến (Free/VietQR) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Xem bài giảng chống tua video, Timestamped Q&A | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Làm BTVN trên Monaco Code Editor | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Xem chuyên cần, điểm số của con | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Thanh toán học phí VietQR, thẻ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Xác nhận thu tiền mặt tại quầy | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -549,6 +599,7 @@ Thuật toán sinh và điều chỉnh buổi học:
    - Khi mở lớp, Quản lý đào tạo chọn tần suất:
      - *1 buổi/tuần:* Chọn thứ (ví dụ: Chủ nhật 08:30 - 11:30).
      - *Nhiều buổi/tuần:* Chọn các thứ (ví dụ: T2-T4-T6 hoặc T3-T5 lúc 19:30 - 21:30).
+   - Phân công Giảng viên chính (Bắt buộc) và Trợ giảng (Tùy chọn - không bắt buộc).
    - Hệ thống tự động tạo trước danh sách $N$ buổi học tương ứng trong bảng `class_sessions`.
 2. **Tùy biến từng buổi học (Per-Session Customization):**
    - Mỗi buổi học trong `class_sessions` là một thực thể độc lập có `id` riêng.
@@ -570,7 +621,7 @@ sequenceDiagram
     participant Engine as NotificationEngineService
     participant DB as PostgreSQL (GORM)
     participant Gateway as Zalo ZNS / SMS Gateway
-    participant Recipient as Parent / Teacher / Coordinator
+    participant Recipient as Parent / Teacher / Coordinator / AcademicMgr
 
     Note over Cron, Engine: Kịch bản 1: Cảnh báo điểm danh sau N phút (15 phút)
     Cron->>Engine: Trigger checkAttendanceAlert()
@@ -584,13 +635,22 @@ sequenceDiagram
     end
     Engine->>DB: Đánh dấu class_sessions.attendanceAlertSentAt = now()
 
-    Note over Cron, Engine: Kịch bản 2: Nhắc nhở lịch học trước 24h & 2h
+    Note over Cron, Engine: Kịch bản 2: Cảnh báo Giảng viên đi muộn / chưa vào lớp (sau 10 phút)
+    Cron->>Engine: Trigger checkTeacherLateAlert()
+    Engine->>DB: Kiểm tra ca học đang diễn ra mà teacher_attendance.checkInTime IS NULL
+    alt Giảng viên chưa check-in sau 10p
+        Engine->>Gateway: Gửi SMS/Push khẩn tới Giảng viên chính
+        Engine->>Gateway: Bắn cảnh báo đỏ tới Quản lý Đào tạo & Vận hành lớp
+        Engine->>DB: Cập nhật teacher_attendance.lateAlertSentAt = now()
+    end
+
+    Note over Cron, Engine: Kịch bản 3: Nhắc nhở lịch học trước 24h & 2h
     Cron->>Engine: Trigger scanUpcomingSessions()
     Engine->>DB: Lấy ca học diễn ra trong 24h tới và 2h tới
     DB-->>Engine: Danh sách ca học kèm preparationNotes & meetUrl
     Engine->>Gateway: Bắn thông báo nhắc lịch học, dặn dò đồ dùng & Link phòng học trực tuyến
 
-    Note over Cron, Engine: Kịch bản 3: Tự động gửi nhận xét buổi học
+    Note over Cron, Engine: Kịch bản 4: Tự động gửi nhận xét buổi học
     participant Teacher as Giảng viên
     Teacher->>Engine: Lưu sổ nhận xét buổi học (teacherNotes)
     Engine->>Gateway: Bắn tin nhắn tóm tắt kết quả ca học tới Phụ huynh & Học sinh
@@ -659,7 +719,8 @@ LMS/
 │   │       ├── 20260923000005_create_assignments_submissions.sql
 │   │       ├── 20260923000006_create_invoices_payments.sql
 │   │       ├── 20260923000007_create_video_progress_discussions.sql
-│   │       └── 20260923000008_create_notification_logs_templates.sql
+│   │       ├── 20260923000008_create_notification_logs_templates.sql
+│   │       └── 20260923000009_create_capstone_examiners.sql
 │   ├── internal/
 │   │   ├── server/                            # Khởi tạo Server & Dependency Injection
 │   │   │   ├── server.go                      # Server struct & lifecycle
@@ -672,13 +733,14 @@ LMS/
 │   │   │   └── request_id.go                  # Gắn Request ID phục vụ truy vết log
 │   │   ├── domain/                            # Các phân hệ nghiệp vụ độc lập (Clean Layered)
 │   │   │   ├── auth/                          # Đăng nhập, đăng ký, cấp phát Token, phân quyền
-│   │   │   ├── class/                         # Khóa học, Module, Lớp học & Buổi học linh hoạt
+│   │   │   ├── class/                         # Khóa học, Module, Lớp học & Buổi học linh hoạt (TA optional)
 │   │   │   ├── attendance/                    # Điểm danh học sinh Hybrid & Chấm công giáo viên
 │   │   │   ├── evaluation/                    # Đánh giá giáo viên theo buổi (Student Feedback) & Audit
+│   │   │   ├── capstone/                      # Đồ án tốt nghiệp, Hội đồng Giám khảo & Rubric defense
 │   │   │   ├── course_video/                  # Trình phát video chống tua & Heartbeat anti-cheat
 │   │   │   ├── assignment/                    # BTVN, nộp code Monaco & Chấm điểm Rubric
-│   │   │   ├── notification/                  # Engine gửi tin nhắn Zalo/SMS (sau 15p, nhắc 24h/2h)
-│   │   │   ├── billing/                       # Học phí, sinh mã VietQR Napas247, xác nhận tiền mặt
+│   │   │   ├── notification/                  # Engine gửi tin nhắn Zalo/SMS (sau 15p, nhắc 24h/2h, cảnh báo GV trễ 10p)
+│   │   │   ├── billing/                       # Mua khóa học trực tuyến (Free 1-click / VietQR), webhook ngân hàng, thu tiền mặt
 │   │   │   └── certificate/                   # Cấp chứng chỉ & URL xác minh công khai (/verify)
 │   │   │       # Mỗi domain tuân thủ cấu trúc 3 tầng chuẩn của go8:
 │   │   │       # ├── handler/ (HTTP Handlers, register.go, DTO validator)
@@ -691,6 +753,7 @@ LMS/
 │   │   └── worker/                            # Tiến trình nền Goroutines & Scheduled Cron
 │   │       ├── cron.go                        # robfig/cron setup
 │   │       ├── attendance_alert_job.go        # Quét và gửi tin điểm danh sau 15p
+│   │       ├── teacher_late_alert_job.go      # Quét và gửi cảnh báo giáo viên đi muộn sau 10p
 │   │       ├── class_reminder_job.go          # Quét và gửi tin nhắc lịch học trước 24h & 2h
 │   │       └── message_dispatcher.go          # Worker pool bắn tin Zalo ZNS / SMS / Email
 │   ├── pkg/                                   # Thư viện tiện ích dùng chung
