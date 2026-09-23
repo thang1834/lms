@@ -2,17 +2,24 @@
 
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
 > **Tài liệu:** `docs/architecture.md`  
-> **Phiên bản:** 2.0.0 (Chuyển đổi Tech Stack: Nuxt UI + Go-chi REST API Backend)  
+> **Phiên bản:** 2.1.0 (Kiến trúc Go Backend chuẩn hóa theo blueprint `gmhafiz/go8` + Frontend Nuxt UI)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
 
 ## 1. Tổng Quan Kiến Trúc Hệ Thống (System Architecture Overview)
 
-Hệ thống **LMS Center Platform** được thiết kế theo mô hình kiến trúc **Tách biệt Frontend - Backend (Decoupled Architecture)** tối ưu hiệu năng cao:
+Hệ thống **LMS Center Platform** được thiết kế theo mô hình kiến trúc **Tách biệt Frontend - Backend (Decoupled Clean Architecture)** tối ưu hiệu năng cao:
 - **Frontend Layer:** Xây dựng trên nền tảng **Nuxt 3/4 + Nuxt UI (Vue 3, TypeScript, Tailwind CSS v4, Pinia)** mang lại trải nghiệm tương tác mượt mà, hỗ trợ cả SSR (Server-Side Rendering cho SEO trang công khai) và SPA tốc độ cao cho các cổng Dashboard quản trị.
-- **Backend API Layer:** Xây dựng bằng ngôn ngữ **Go (Golang 1.23+)** với Router **`go-chi/chi` v5** nổi tiếng về tốc độ xử lý siêu nhanh (hàng trăm nghìn request/giây), footprint bộ nhớ RAM cực thấp và khả năng xử lý concurrency tuyệt vời qua **Go Goroutines** cho các tác vụ Cron điểm danh và bắn tin nhắn tự động.
-- **Database Layer:** **PostgreSQL 16** kết hợp **GORM** (Go Object Relational Mapping) đảm bảo toàn vẹn dữ liệu, giao dịch ACID tin cậy và tốc độ truy vấn tối ưu.
+- **Backend API Layer:** Xây dựng bằng ngôn ngữ **Go (Golang 1.23+)** kế thừa trọn vẹn kiến trúc phân tầng chuyên nghiệp từ blueprint **[`gmhafiz/go8`](https://github.com/gmhafiz/go8)**:
+  - **Router:** `go-chi/chi` v5 (tiêu chuẩn cộng đồng Go, 100% tương thích `net/http`).
+  - **Mô hình Phân tầng (Layered Architecture):** `Handler` (Controller, DTO validation) $\to$ `UseCase` (Business logic) $\to$ `Repository` (Data access).
+  - **Quản lý CSDL & Migrations:** Quản lý phiên bản bảng bằng **Goose migrations** (`database/migrations/*.sql`), kết nối truy vấn tốc độ cao qua `sqlx` / `GORM`.
+  - **Quản lý Cấu hình:** Struct-based Configuration đọc từ `.env` qua `kelseyhightower/envconfig`.
+  - **Dependency Injection:** Khởi tạo tường minh tại `internal/server/initDomains.go`.
+  - **Task Runner:** Điều phối tự động hóa qua `Taskfile.yml` (`task dev`, `task migrate`, `task routes`, `task swagger`).
+  - **Concurrency & Workers:** Tận dụng tối đa Go Goroutines & Channels cho Cron quét điểm danh sau 15p, nhắc lịch trước 24h/2h và Heartbeat chống tua video mà không cần Redis.
+- **Database Layer:** **PostgreSQL 16** đảm bảo toàn vẹn dữ liệu, giao dịch ACID tin cậy và tốc độ truy vấn tối ưu.
 
 ```mermaid
 graph TD
@@ -27,22 +34,32 @@ graph TD
         QRCard["VietQR Display Component"]
     end
 
-    subgraph GoChiBackend ["2. Tầng Backend Hiệu Năng Cao (Go 1.23 + go-chi/chi v5)"]
-        subgraph Middlewares ["Chi Middleware Stack"]
-            Logger["chi/middleware.Logger & Recoverer"]
+    subgraph Go8Backend ["2. Tầng Backend Hiệu Năng Cao (gmhafiz/go8 Architecture)"]
+        subgraph Middlewares ["Chi Middleware Stack (internal/middleware)"]
+            Logger["chi/middleware.Logger & RequestID"]
+            Recoverer["chi/middleware.Recoverer"]
             CORS["cors.Handler (Allowed Origins)"]
             JWTAuth["JWT Authentication Middleware"]
             RBACAuth["Dynamic RBAC Permission Guard"]
         end
 
-        subgraph CoreAPIs ["Chi REST Handlers (internal/api/handlers)"]
-            AuthH["Auth & User Handlers"]
-            ClassH["Class & Schedule Handlers"]
-            AttendanceH["Attendance & Timesheet Handlers"]
-            AssignmentH["Assignment & Monaco Grading Handlers"]
-            CourseH["Course, Video & Heartbeat Handlers"]
-            PaymentH["Payment & VietQR Handlers"]
-            FeedbackH["Evaluation & Feedback Handlers"]
+        subgraph Domains ["Domain Packages (internal/domain/{feature})"]
+            subgraph DomainStructure ["Chuẩn 3 tầng mỗi Domain"]
+                Handler["Handler (Parse DTO, Validator v10)"]
+                UseCase["Use Case (Business Logic)"]
+                Repo["Repository (Postgres / sqlx / GORM)"]
+                Handler --> UseCase
+                UseCase --> Repo
+            end
+            
+            AuthD["auth: Login, Register, RBAC"]
+            ClassD["class: Schedule, Recurrence, Reschedule"]
+            AttendD["attendance: Student Attendance, Timesheet"]
+            VideoD["course_video: Anti-Seeking, Heartbeat"]
+            AssignD["assignment: Monaco Submissions, Grading"]
+            NotifD["notification: Automated Message Engine"]
+            BillD["billing: VietQR, Invoices, Cash"]
+            CertD["certificate: Public Verifiable Certs"]
         end
 
         subgraph GoWorkers ["Goroutine Workers & Cron (internal/worker)"]
@@ -51,14 +68,15 @@ graph TD
             MessageDispatcher["Async Message Dispatcher Pool (Zalo/SMS/Email)"]
         end
 
-        subgraph ServicesRepos ["Service & Repository Layer (internal/service & repository)"]
-            DomainServices["Business Domain Services"]
-            GORMClient["GORM ORM Client"]
+        subgraph ServerCore ["Server Core & DI (internal/server)"]
+            ServerStruct["Server Struct & Configs (envconfig)"]
+            InitDomains["initDomains.go (Dependency Injection)"]
         end
     end
 
     subgraph DataLayer ["3. Tầng Dữ Liệu (Data Layer)"]
         Postgres[(PostgreSQL 16 Database)]
+        GooseMigrations["Goose SQL Migrations (database/migrations)"]
     end
 
     subgraph ExternalServices ["4. Dịch Vụ Bên Ngoài (External Gateways)"]
@@ -70,16 +88,15 @@ graph TD
     end
 
     FrontendLayer --> Middlewares
-    Middlewares --> CoreAPIs
-    CoreAPIs --> DomainServices
-    DomainServices --> GORMClient
-    GORMClient --> Postgres
-    GoWorkers --> DomainServices
-    GoWorkers --> ExternalServices
-    DomainServices --> ExternalServices
+    Middlewares --> Handler
+    Repo --> Postgres
+    GooseMigrations --> Postgres
+    GoWorkers --> Domains
+    Domains --> ExternalServices
     FrontendLayer -.-> YouTube
-    RestrictedPlayer -.-> CourseH
+    RestrictedPlayer -.-> VideoD
 ```
+
 
 
 ---
@@ -611,63 +628,124 @@ Nhằm bảo đảm học viên của các khóa học tự học (Self-Paced) x
 
 ---
 
-## 7. Cấu Trúc Mã Nguồn Dự Án (Nuxt UI + Go-chi Monorepo Layout)
+## 7. Cấu Trúc Mã Nguồn Dự Án (Chuẩn hóa theo blueprint gmhafiz/go8 + Nuxt UI)
 
-Dự án được tổ chức theo cấu trúc monorepo phân tách rõ ràng:
+Hệ thống được tổ chức theo chuẩn **Monorepo** với Backend tuân thủ nguyên tắc Clean/Layered Architecture của **`gmhafiz/go8`**:
 
 ```text
 LMS/
-├── backend/                             # Golang REST API Server (go-chi/chi v5)
+├── backend/                                   # Golang REST API Server (gmhafiz/go8 Blueprint)
 │   ├── cmd/
-│   │   └── server/
-│   │       └── main.go                  # Điểm khởi chạy ứng dụng Go
+│   │   ├── go8/
+│   │   │   └── main.go                        # Entrypoint chính khởi chạy API Server
+│   │   ├── migrate/
+│   │   │   └── main.go                        # Trình thực thi database migrations (Goose)
+│   │   ├── route/
+│   │   │   └── main.go                        # CLI in danh sách toàn bộ routes đã đăng ký
+│   │   └── seed/
+│   │       └── main.go                        # Seeder dữ liệu mẫu (Roles, Admin, Permissions)
+│   ├── configs/                               # Cấu hình Struct-based (envconfig & .env)
+│   │   ├── configs.go                         # Root Config struct
+│   │   ├── api.go                             # Cấu hình Host, Port, Read/Write Timeout
+│   │   ├── database.go                        # Cấu hình PostgreSQL connection pool
+│   │   ├── cors.go                            # Cấu hình CORS allowed origins
+│   │   └── jwt.go                             # Cấu hình JWT secret key & expiration
+│   ├── database/
+│   │   └── migrations/                        # Goose SQL Migrations (*.sql)
+│   │       ├── 20260923000001_create_roles_permissions.sql
+│   │       ├── 20260923000002_create_users_profiles.sql
+│   │       ├── 20260923000003_create_courses_classes.sql
+│   │       ├── 20260923000004_create_sessions_attendance.sql
+│   │       ├── 20260923000005_create_assignments_submissions.sql
+│   │       ├── 20260923000006_create_invoices_payments.sql
+│   │       ├── 20260923000007_create_video_progress_discussions.sql
+│   │       └── 20260923000008_create_notification_logs_templates.sql
 │   ├── internal/
-│   │   ├── api/
-│   │   │   ├── handlers/                # HTTP Handlers (Auth, Class, Attendance, etc.)
-│   │   │   ├── middleware/              # Chi Middlewares (JWT, RBAC, Logger, CORS)
-│   │   │   └── router.go                # Chi Router configuration & route groups
-│   │   ├── config/                      # Cấu hình môi trường (Viper / env)
-│   │   ├── models/                      # Go Structs & GORM database models (31 tables)
-│   │   ├── repository/                  # Database queries (GORM data access layer)
-│   │   ├── service/                     # Nghiệp vụ core (Attendance, Billing, Grading)
-│   │   └── worker/                      # Cron Jobs (robfig/cron) & Goroutine Message Dispatcher
-│   ├── pkg/
-│   │   ├── response/                    # Standard JSON response helpers
-│   │   ├── vietqr/                      # Thư viện sinh mã VietQR Napas247
-│   │   └── pdf/                         # Generator biên lai thu tiền & chứng chỉ
+│   │   ├── server/                            # Khởi tạo Server & Dependency Injection
+│   │   │   ├── server.go                      # Server struct & lifecycle
+│   │   │   ├── init.go                        # Khởi tạo Router, DB, Validator, Middlewares
+│   │   │   └── initDomains.go                 # Wire-up dependencies (Repo -> Usecase -> Handler)
+│   │   ├── middleware/                        # Chaining Middlewares cho Chi Router
+│   │   │   ├── auth.go                        # JWT Authentication Middleware
+│   │   │   ├── rbac.go                        # Dynamic RBAC Permission Guard
+│   │   │   ├── cors.go                        # Cross-Origin Resource Sharing
+│   │   │   └── request_id.go                  # Gắn Request ID phục vụ truy vết log
+│   │   ├── domain/                            # Các phân hệ nghiệp vụ độc lập (Clean Layered)
+│   │   │   ├── auth/                          # Đăng nhập, đăng ký, cấp phát Token, phân quyền
+│   │   │   ├── class/                         # Khóa học, Module, Lớp học & Buổi học linh hoạt
+│   │   │   ├── attendance/                    # Điểm danh học sinh Hybrid & Chấm công giáo viên
+│   │   │   ├── evaluation/                    # Đánh giá giáo viên theo buổi (Student Feedback) & Audit
+│   │   │   ├── course_video/                  # Trình phát video chống tua & Heartbeat anti-cheat
+│   │   │   ├── assignment/                    # BTVN, nộp code Monaco & Chấm điểm Rubric
+│   │   │   ├── notification/                  # Engine gửi tin nhắn Zalo/SMS (sau 15p, nhắc 24h/2h)
+│   │   │   ├── billing/                       # Học phí, sinh mã VietQR Napas247, xác nhận tiền mặt
+│   │   │   └── certificate/                   # Cấp chứng chỉ & URL xác minh công khai (/verify)
+│   │   │       # Mỗi domain tuân thủ cấu trúc 3 tầng chuẩn của go8:
+│   │   │       # ├── handler/ (HTTP Handlers, register.go, DTO validator)
+│   │   │       # ├── usecase/ (Business Logic implementation)
+│   │   │       # ├── repository/ (Postgres data access)
+│   │   │       # ├── model.go (Entity struct)
+│   │   │       # ├── dto.go (Request/Response DTOs)
+│   │   │       # ├── repository.go (Interface)
+│   │   │       # └── usecase.go (Interface)
+│   │   └── worker/                            # Tiến trình nền Goroutines & Scheduled Cron
+│   │       ├── cron.go                        # robfig/cron setup
+│   │       ├── attendance_alert_job.go        # Quét và gửi tin điểm danh sau 15p
+│   │       ├── class_reminder_job.go          # Quét và gửi tin nhắc lịch học trước 24h & 2h
+│   │       └── message_dispatcher.go          # Worker pool bắn tin Zalo ZNS / SMS / Email
+│   ├── pkg/                                   # Thư viện tiện ích dùng chung
+│   │   ├── response/                          # Chuẩn hóa JSON Response Envelope
+│   │   ├── validator/                         # Custom validation rules (go-playground/validator)
+│   │   ├── vietqr/                            # Package tạo payload & mã VietQR Napas247
+│   │   └── pdf/                               # Package sinh file PDF biên lai & chứng chỉ
+│   ├── Taskfile.yml                           # Task runner tự động hóa (build, dev, test, migrate)
+│   ├── .air.toml                              # Cấu hình hot reload (Air)
+│   ├── env.example                            # Biến môi trường mẫu
 │   ├── go.mod
 │   └── go.sum
 │
-├── frontend/                            # Nuxt UI Application (Vue 3 + Tailwind CSS v4)
-│   ├── assets/                          # CSS tokens, static styles
-│   ├── components/                      # Reusable Nuxt UI components
-│   │   ├── common/                      # Navigation, Modal, Toast, VietQR Card
-│   │   ├── course/                      # RestrictedVideoPlayer.vue, TimestampedQA.vue
-│   │   ├── editor/                      # MonacoCodeEditor.vue
-│   │   └── portals/                     # Admin, Coordinator, Teacher, Student components
-│   ├── composables/                     # Vue 3 Composables (useAuth, useApi, useAttendance)
-│   ├── layouts/                         # default.vue, admin.vue, portal.vue
-│   ├── pages/                           # File-based routing
-│   │   ├── index.vue                    # Landing page giới thiệu trung tâm
-│   │   ├── login.vue                    # Đăng nhập hệ thống
-│   │   ├── admin/                       # /admin - Cổng Giáo vụ & Quản lý đào tạo
-│   │   ├── operations/                  # /operations - Cổng Chuyên viên Vận hành lớp (CSKH)
-│   │   ├── teacher/                     # /teacher - Cổng Giảng viên & Điểm danh
-│   │   ├── student/                     # /student - Cổng Học viên, Monaco Editor, Video
-│   │   └── parent/                      # /parent - Cổng Phụ huynh, chuyên cần, VietQR
-│   ├── stores/                          # Pinia Stores (auth.ts, class.ts, cart.ts)
-│   ├── nuxt.config.ts                   # Cấu hình Nuxt UI, Tailwind, API proxy
+├── frontend/                                  # Nuxt UI Application (Vue 3 + Tailwind CSS v4)
+│   ├── assets/css/main.css                    # Tailwind CSS v4 & Design Tokens (DESIGN.md)
+│   ├── components/                            # Reusable Nuxt UI components
+│   │   ├── common/                            # Navigation, Modal, Toast, VietQR Card
+│   │   ├── course/                            # RestrictedVideoPlayer.vue, TimestampedQA.vue
+│   │   ├── editor/                            # MonacoCodeEditor.vue
+│   │   └── portals/                           # Components riêng của 4 Portal
+│   ├── composables/                           # Vue 3 Composables (useAuth, useApi, useAttendance)
+│   ├── layouts/                               # default.vue, admin.vue, portal.vue
+│   ├── pages/                                 # File-based routing (Admin, Teacher, Student, Parent)
+│   ├── stores/                                # Pinia Stores (auth.ts, class.ts)
+│   ├── nuxt.config.ts                         # Cấu hình Nuxt UI, Tailwind, API proxy
 │   ├── package.json
 │   └── tsconfig.json
 │
-├── docs/                                # Toàn bộ bộ tài liệu kỹ thuật & kiến trúc
-│   ├── requirements.md
-│   ├── architecture.md
-│   ├── api-specification.md
-│   ├── user-flows.md
-│   └── test-plan.md
-├── DESIGN.md                            # Quy chuẩn Design Tokens & Typography
+├── docs/                                      # Bộ tài liệu kỹ thuật toàn diện
+│   ├── requirements.md                        # SRS v1.3.0
+│   ├── architecture.md                        # Kiến trúc v2.1.0 (go8 + Nuxt UI)
+│   ├── api-specification.md                   # Đặc tả REST API chuẩn Chi Router
+│   ├── user-flows.md                          # Sơ đồ tương tác người dùng & Wireframes
+│   └── test-plan.md                           # Kế hoạch QA & Lệnh kiểm thử
+├── DESIGN.md                                  # Quy chuẩn Design Tokens & Typography
 └── .gitignore
 ```
+
+---
+
+## 8. Quy Trình Phát Triển & Vận Hành Với `go8` & Taskfile (Go8 Developer Workflow)
+
+Nhờ áp dụng blueprint `gmhafiz/go8`, toàn bộ các thao tác phát triển và kiểm thử ở backend được gói gọn trong công cụ **Task runner (`Taskfile.yml`)**:
+
+| Lệnh `task` | Thao Tác Thực Hiện Phía Backend |
+| :--- | :--- |
+| `task dev` | Khởi chạy máy chủ API với cơ chế **Hot Reload (Air)**, tự động biên dịch lại khi sửa mã nguồn Go. |
+| `task migrate` | Chạy toàn bộ các file migration trong `database/migrations/*.sql` bằng **Goose**. |
+| `task migrate:create -- name` | Tạo nhanh một file migration mới (Up & Down SQL). |
+| `task migrate:rollback` | Rollback migration gần nhất nếu cần quay lại phiên bản CSDL cũ. |
+| `task routes` | In ra toàn bộ bảng danh sách các API Route đã đăng ký trên terminal để kiểm tra nhanh. |
+| `task swagger` | Tự động quét annotations trong handlers và sinh tài liệu **Swagger/OpenAPI** trực quan tại `/swagger/`. |
+| `task test` | Chạy toàn bộ Unit Test và Integration Test của Repository, UseCase và Handler. |
+| `task check` | Chạy kiểm tra tổng hợp: `go fmt` (định dạng), `go vet` (biên dịch), `golangci-lint` và quét lỗ hổng bảo mật `govulncheck`. |
+| `task build` | Đóng gói nhị phân (statically-linked binary) tối ưu cho môi trường Production (Linux/Docker). |
+
 
 

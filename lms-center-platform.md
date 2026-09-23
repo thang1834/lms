@@ -2,14 +2,17 @@
 
 > **File:** `lms-center-platform.md`  
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
+> **Kiến trúc:** Monorepo (Frontend: Nuxt UI + Vue 3 | Backend: `gmhafiz/go8` + Go-chi + PostgreSQL)  
 > **Chế độ:** PLANNING ONLY (No code writing in this phase)  
-> **Phiên bản:** 1.2.0 (Cập nhật Chuẩn RBAC, Vận Hành Lớp, Lịch Học Linh Hoạt & Đánh Giá Moodle)  
+> **Phiên bản:** 2.1.0 (Chuẩn hóa Backend theo blueprint `gmhafiz/go8` & Frontend Nuxt UI)  
+> **Ngày cập nhật:** 23/09/2026  
 
 ---
 
 ## 1. Tổng Quan & Mục Tiêu Dự Án (Overview)
 
-Hệ thống LMS được thiết kế riêng cho trung tâm đào tạo hiện đại với trọng tâm là **Công nghệ thông tin (CNTT)**, đồng thời linh hoạt mở rộng hoàn hảo cho **Ngoại ngữ** và các bộ môn khác.
+Hệ thống LMS được thiết kế riêng cho trung tâm đào tạo hiện đại với trọng tâm là **Công nghệ thông tin (CNTT)**, đồng thời linh hoạt mở rộng hoàn hảo cho **Ngoại ngữ** và các bộ môn khác. Backend được xây dựng theo blueprint **`gmhafiz/go8`** (Go-chi, Layered Architecture, Goose migrations, Taskfile) kết hợp Frontend **Nuxt UI** cho 4 cổng người dùng.
+
 
 Hệ thống tích hợp toàn diện 7 trụ cột nghiệp vụ:
 1. **Chuẩn Hóa Phân Quyền Hạt Nhân RBAC (Dynamic RBAC Architecture)**:

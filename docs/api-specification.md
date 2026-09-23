@@ -37,16 +37,27 @@ Toàn bộ các giao tiếp dữ liệu giữa Client (Nuxt UI) và Server (Go-c
 
 ---
 
-## 2. Danh Mục Các API Chi Tiết (Chi Router Groups)
+## 2. Danh Mục Các API Chi Tiết (Chi Router Groups - Chuẩn go8)
 
 ```go
-// Chi Router Definition (internal/api/router.go)
-r.Route("/api", func(r chi.Router) {
-    r.Use(middleware.Logger, middleware.Recoverer, middleware.CORS)
-    // Public routes (Auth, VietQR verification)
-    // Protected routes (JWT & RBAC Middleware)
-})
+// Chi Router Definition theo chuẩn gmhafiz/go8 (internal/server/initDomains.go)
+func (s *Server) InitDomains() {
+    s.router.Route("/api/v1", func(r chi.Router) {
+        // Global middlewares
+        r.Use(middleware.RequestID, middleware.Logger, middleware.Recoverer, middleware.CORS)
+        
+        // Đăng ký Endpoints cho từng Domain theo chuẩn go8
+        authHandler.RegisterHTTPEndPoints(r, s.validator, s.authUseCase)
+        classHandler.RegisterHTTPEndPoints(r, s.validator, s.classUseCase)
+        attendanceHandler.RegisterHTTPEndPoints(r, s.validator, s.attendanceUseCase)
+        videoHandler.RegisterHTTPEndPoints(r, s.validator, s.videoUseCase)
+        assignmentHandler.RegisterHTTPEndPoints(r, s.validator, s.assignmentUseCase)
+        billingHandler.RegisterHTTPEndPoints(r, s.validator, s.billingUseCase)
+        notificationHandler.RegisterHTTPEndPoints(r, s.validator, s.notificationUseCase)
+    })
+}
 ```
+
 
 ### 2.1 Nhóm Quản Lý Giáo Viên & Lịch Dạy (Teachers & Schedule)
 
