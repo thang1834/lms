@@ -4,7 +4,7 @@
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
 > **Kiến trúc:** Monorepo (Frontend: Nuxt UI + Vue 3 | Backend: `gmhafiz/go8` + Go-chi + PostgreSQL)  
 > **Chế độ:** PLANNING ONLY (No code writing in this phase)  
-> **Phiên bản:** 2.1.0 (Chuẩn hóa Backend theo blueprint `gmhafiz/go8` & Frontend Nuxt UI)  
+> **Phiên bản:** 2.2.0 (Bổ sung Live Class Cockpit, AI Code Review, Voice Note, Hộp Thư Q&A, Chợ Dạy Thay & Sổ Tay Sư Phạm)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
@@ -14,7 +14,7 @@
 Hệ thống LMS được thiết kế riêng cho trung tâm đào tạo hiện đại với trọng tâm là **Công nghệ thông tin (CNTT)**, đồng thời linh hoạt mở rộng hoàn hảo cho **Ngoại ngữ** và các bộ môn khác. Backend được xây dựng theo blueprint **`gmhafiz/go8`** (Go-chi, Layered Architecture, Goose migrations, Taskfile) kết hợp Frontend **Nuxt UI** cho 4 cổng người dùng.
 
 
-Hệ thống tích hợp toàn diện 10 trụ cột nghiệp vụ:
+Hệ thống tích hợp toàn diện 18 trụ cột nghiệp vụ:
 1. **Chuẩn Hóa Phân Quyền Hạt Nhân RBAC (Dynamic RBAC Architecture)**:
    - Các bảng `roles`, `permissions`, `role_permissions`, `user_roles`.
    - Phân cấp 8 vai trò: Super Admin, Academic Manager (Giáo vụ trưởng), Class Coordinator (Vận hành lớp & Chăm sóc học viên), Giảng viên chính, Trợ giảng (Optional), Giám khảo / Hội đồng phản biện (Examiner), Học viên và Phụ huynh.
@@ -57,6 +57,23 @@ Hệ thống tích hợp toàn diện 10 trụ cột nghiệp vụ:
     - Dashboard KPIs tài chính và vận hành thời gian thực.
     - Radar tự động gắn cờ đỏ học sinh có nguy cơ bỏ học (vắng 2 buổi liên tiếp hoặc thiếu 3 BTVN) để CSKH can thiệp kịp thời.
     - Ma trận đánh giá hiệu quả giảng viên (Teacher Performance Matrix) theo feedback, đúng giờ và tốc độ trả bài.
+15. **Khoang Lái Lớp Học Trực Tuyến & Bảng Vẽ Kỹ Thuật Số (Live Class Cockpit & Digital Whiteboard)**:
+    - 1-click khởi động lớp: tự động mở Meet/Zoom, tự động check-in giảng viên và hiển thị phòng học.
+    - Điểm danh nhanh 1 chạm cho cả lớp.
+    - Bảng vẽ tương tác nhiều người (Excalidraw/Tldraw) với autosave JSON định kỳ 10s và xuất bản PDF đính kèm buổi học.
+    - Tạo nhanh câu hỏi bình chọn trực tiếp (Mini Poll 2 phút) kèm biểu đồ kết quả thời gian thực.
+16. **Trợ Lý AI Chấm Bài Code & Nhận Xét Bằng Giọng Nói (AI Code Review & Voice Note Feedback)**:
+    - Trợ lý AI quét phân tích mã nguồn Clean Code, phát hiện lỗi tiềm ẩn và tạo bản nháp nhận xét sư phạm kèm điểm đề xuất.
+    - Ghi âm nhận xét trực tiếp trên trình duyệt (Voice Note 30s-2m) giúp phản hồi sinh động, tiết kiệm 70% thời gian gõ phím.
+17. **Hộp Thư Q&A Tập Trung & Ủy Quyền Trợ Giảng (Unified Q&A Inbox & TA Delegation)**:
+    - Hộp thư thống nhất thu gom toàn bộ thắc mắc của học sinh từ video bài giảng (kèm timestamp) và bài tập về nhà.
+    - Kho câu trả lời mẫu (Snippets) dùng lại câu giải thích thường gặp.
+    - Cơ chế ủy quyền câu hỏi cho Trợ giảng phụ trách kèm cam kết thời gian phản hồi (SLA 2h).
+18. **Chợ Dạy Thay, Lịch Rảnh & Sổ Tay Sư Phạm Cá Nhân (Substitute Marketplace, Availability & Pedagogy)**:
+    - Thiết lập lịch rảnh cố định trong tuần (`teacher_availabilities`).
+    - Chợ dạy thay: Đăng yêu cầu dạy thay, hệ thống tự khớp nối với GV cùng chuyên môn có lịch rảnh, tự động điều chuyển thù lao ca dạy.
+    - Sổ tay ghi chú sư phạm cá nhân (`student_pedagogical_notes`): Ghi chú bảo mật về tính cách, điểm mạnh/yếu học sinh (chỉ GV và TA đọc được).
+    - Ngân hàng đề bài mẫu cá nhân (`assignment_banks`) kèm nút nhân bản 1-click sang các lớp học mới.
 
 ---
 
@@ -383,6 +400,95 @@ type Contract struct {
 	SignedAt      *time.Time `json:"signedAt,omitempty" db:"signed_at"`
 	SignatureData *string    `json:"signatureData,omitempty" db:"signature_data"` // JSON string
 	Status        string     `json:"status" db:"status"` // DRAFT, SENT, SIGNED, EXPIRED, TERMINATED
+	AuditFields
+}
+
+// 15. Khoang lái lớp học trực tuyến & Bảng vẽ kỹ thuật số
+type ClassWhiteboard struct {
+	ID           uuid.UUID `json:"id" db:"id"`
+	SessionID    uuid.UUID `json:"sessionId" db:"session_id"`
+	TeacherID    uuid.UUID `json:"teacherId" db:"teacher_id"`
+	Title        string    `json:"title" db:"title"`
+	BoardData    string    `json:"boardData" db:"board_data"` // JSON (Excalidraw/Tldraw scene data)
+	ExportPdfURL *string   `json:"exportPdfUrl,omitempty" db:"export_pdf_url"`
+	AuditFields
+}
+
+type QuickPoll struct {
+	ID              uuid.UUID `json:"id" db:"id"`
+	SessionID       uuid.UUID `json:"sessionId" db:"session_id"`
+	QuestionText    string    `json:"questionText" db:"question_text"`
+	Options         string    `json:"options" db:"options"` // JSON array: [{"id": "opt1", "text": "Đã hiểu"}]
+	CorrectOptionID *string   `json:"correctOptionId,omitempty" db:"correct_option_id"`
+	IsActive        bool      `json:"isActive" db:"is_active"`
+	DurationSeconds int       `json:"durationSeconds" db:"duration_seconds"`
+	AuditFields
+}
+
+type PollVote struct {
+	ID               uuid.UUID `json:"id" db:"id"`
+	PollID           uuid.UUID `json:"pollId" db:"poll_id"`
+	StudentID        uuid.UUID `json:"studentId" db:"student_id"`
+	SelectedOptionID string    `json:"selectedOptionId" db:"selected_option_id"`
+	VotedAt          time.Time `json:"votedAt" db:"voted_at"`
+}
+
+// 16. Trợ lý AI Code Review & Voice Note Feedback
+type AICodeReview struct {
+	ID             uuid.UUID `json:"id" db:"id"`
+	SubmissionID   uuid.UUID `json:"submissionId" db:"submission_id"`
+	LintIssues     string    `json:"lintIssues" db:"lint_issues"` // JSON array
+	SuggestedScore float64   `json:"suggestedScore" db:"suggested_score"`
+	FeedbackDraft  string    `json:"feedbackDraft" db:"feedback_draft"`
+	Status         string    `json:"status" db:"status"` // PENDING, GENERATED, APPLIED
+	AuditFields
+}
+
+// 17. Sổ tay sư phạm & Ngân hàng đề bài riêng
+type StudentPedagogicalNote struct {
+	ID             uuid.UUID `json:"id" db:"id"`
+	StudentID      uuid.UUID `json:"studentId" db:"student_id"`
+	TeacherID      uuid.UUID `json:"teacherId" db:"teacher_id"`
+	ClassID        uuid.UUID `json:"classId" db:"class_id"`
+	NoteContent    string    `json:"noteContent" db:"note_content"`
+	IsSharedWithTA bool      `json:"isSharedWithTa" db:"is_shared_with_ta"` // Confidential from Student & Parent
+	AuditFields
+}
+
+type AssignmentBank struct {
+	ID                 uuid.UUID `json:"id" db:"id"`
+	TeacherID          uuid.UUID `json:"teacherId" db:"teacher_id"`
+	SubjectID          uuid.UUID `json:"subjectId" db:"subject_id"`
+	Title              string    `json:"title" db:"title"`
+	Description        string    `json:"description" db:"description"`
+	Format             string    `json:"format" db:"format"` // MONACO_CODE, ESSAY, GITHUB_URL, QUIZ
+	StarterCode        *string   `json:"starterCode,omitempty" db:"starter_code"`
+	SolutionCode       *string   `json:"solutionCode,omitempty" db:"solution_code"`
+	RubricCriteria     string    `json:"rubricCriteria" db:"rubric_criteria"` // JSON
+	IsSharedWithCenter bool      `json:"isSharedWithCenter" db:"is_shared_with_center"`
+	AuditFields
+}
+
+// 18. Chợ dạy thay & Lịch rảnh tuần
+type TeacherAvailability struct {
+	ID        uuid.UUID `json:"id" db:"id"`
+	TeacherID uuid.UUID `json:"teacherId" db:"teacher_id"`
+	DayOfWeek int       `json:"dayOfWeek" db:"day_of_week"` // 1 (Mon) - 7 (Sun)
+	StartTime string    `json:"startTime" db:"start_time"` // "18:00"
+	EndTime   string    `json:"endTime" db:"end_time"`     // "21:00"
+	IsActive  bool      `json:"isActive" db:"is_active"`
+	AuditFields
+}
+
+type SubstituteRequest struct {
+	ID                  uuid.UUID  `json:"id" db:"id"`
+	SessionID           uuid.UUID  `json:"sessionId" db:"session_id"`
+	OriginalTeacherID   uuid.UUID  `json:"originalTeacherId" db:"original_teacher_id"`
+	SubstituteTeacherID *uuid.UUID `json:"substituteTeacherId,omitempty" db:"substitute_teacher_id"`
+	Reason              string     `json:"reason" db:"reason"`
+	CompensationRate    float64    `json:"compensationRate" db:"compensation_rate"`
+	Status              string     `json:"status" db:"status"` // OPEN, ACCEPTED, REJECTED, CANCELLED
+	ResolvedAt          *time.Time `json:"resolvedAt,omitempty" db:"resolved_at"`
 	AuditFields
 }
 ```

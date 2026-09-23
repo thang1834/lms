@@ -2,7 +2,7 @@
 
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
 > **Tài liệu:** `docs/api-specification.md`  
-> **Phiên bản:** 2.3.0 (Chuẩn hóa Go 1.23+ / `gmhafiz/go8` Layered Architecture, Chi Router, Go Struct DTOs, bổ sung Campus, Make-up Scheduling, Quiz Bank & Executive Analytics)  
+> **Phiên bản:** 2.4.0 (Chuẩn hóa Go 1.23+ / `gmhafiz/go8` Layered Architecture, Chi Router, Go Struct DTOs, bổ sung Teacher Live Cockpit, AI Review, Inbox & Substitute)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
@@ -1732,6 +1732,333 @@ type TeacherMatrixItemResponse struct {
 	OnTimeRate       float64   `json:"onTimeRate" example:"98.2"`
 	LateSessionsCount int      `json:"lateSessionsCount" example:"1"`
 	AvgGradingHours  float64   `json:"avgGradingHours" example:"18.5"` // Thời gian trả bài trung bình (giờ)
+}
+```
+
+---
+
+### Phân Hệ 17: Bảng Điều Khiển Ca Dạy Trực Tiếp & Bảng Trắng (`internal/domain/cockpit`)
+
+#### 17.1 `GET /api/v1/teacher/cockpit/{sessionId}` - Không gian ca dạy tập trung (Live Cockpit)
+
+```go
+package handler
+
+import (
+	"net/http"
+	"backend/internal/domain/cockpit/dto"
+	"backend/pkg/response"
+)
+
+// GetLiveCockpit godoc
+// @Summary Bảng điều khiển ca dạy tập trung (Live Cockpit)
+// @Description Tải toàn bộ thông tin ca dạy: link Meet/Zoom, trạng thái check-in, danh sách học viên, bài giảng và quick poll
+// @Tags Teacher Live Cockpit
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param sessionId path string true "Mã định danh buổi học (UUID)"
+// @Success 200 {object} response.Envelope{data=dto.LiveCockpitResponse} "Tải không gian ca dạy thành công"
+// @Failure 403 {object} response.Envelope "Chỉ giảng viên phụ trách hoặc trợ giảng mới có quyền truy cập"
+// @Router /api/v1/teacher/cockpit/{sessionId} [get]
+func (h *CockpitHandler) GetLiveCockpit(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.GetLiveCockpit
+}
+```
+
+#### 17.2 `POST /api/v1/teacher/cockpit/{sessionId}/quick-poll` - Phát câu hỏi bình chọn tức thời
+
+```go
+// CreateQuickPoll godoc
+// @Summary Tạo câu hỏi bình chọn nhanh 2 phút trong ca dạy
+// @Description Giảng viên phát câu hỏi kiểm tra mức độ hiểu bài ngay tại lớp để học viên bình chọn real-time
+// @Tags Teacher Live Cockpit
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param sessionId path string true "Mã định danh buổi học (UUID)"
+// @Param request body dto.CreateQuickPollRequest true "Nội dung câu hỏi và các lựa chọn"
+// @Success 201 {object} response.Envelope{data=dto.QuickPollResponse} "Phát bình chọn thành công"
+// @Router /api/v1/teacher/cockpit/{sessionId}/quick-poll [post]
+func (h *CockpitHandler) CreateQuickPoll(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.CreateQuickPoll
+}
+```
+
+#### 17.3 `POST /api/v1/teacher/cockpit/{sessionId}/whiteboard` - Lưu bảng trắng kỹ thuật số
+
+```go
+// SaveWhiteboard godoc
+// @Summary Lưu nét vẽ bảng trắng kỹ thuật số & Xuất PDF
+// @Description Lưu dữ liệu bảng vẽ Excalidraw/Tldraw của buổi học và tự động xuất file đính kèm cho học viên
+// @Tags Teacher Live Cockpit
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param sessionId path string true "Mã định danh buổi học (UUID)"
+// @Param request body dto.SaveWhiteboardRequest true "Dữ liệu nét vẽ và tiêu đề sơ đồ"
+// @Success 200 {object} response.Envelope{data=dto.WhiteboardResponse} "Lưu bảng trắng thành công"
+// @Router /api/v1/teacher/cockpit/{sessionId}/whiteboard [post]
+func (h *CockpitHandler) SaveWhiteboard(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.SaveWhiteboard
+}
+```
+
+---
+
+### Phân Hệ 18: Trợ Lý Chấm Điểm AI & Voice Note (`internal/domain/assignment`)
+
+#### 18.1 `POST /api/v1/submissions/{id}/ai-review` - Trợ lý AI quét code review
+
+```go
+package handler
+
+import (
+	"net/http"
+	"backend/internal/domain/assignment/dto"
+	"backend/pkg/response"
+)
+
+// GenerateAICodeReview godoc
+// @Summary Trợ lý AI quét code review & Gợi ý nhận xét sư phạm
+// @Description Phân tích mã nguồn học viên nộp, phát hiện lỗi cú pháp, gợi ý điểm số và soạn bản nháp nhận xét Clean Code
+// @Tags Teacher Grading
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Mã bài nộp submission (UUID)"
+// @Success 200 {object} response.Envelope{data=dto.AICodeReviewDraftResponse} "Sinh nhận xét AI thành công"
+// @Failure 404 {object} response.Envelope "Không tìm thấy bài nộp"
+// @Router /api/v1/submissions/{id}/ai-review [post]
+func (h *AssignmentHandler) GenerateAICodeReview(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.GenerateAICodeReview
+}
+```
+
+#### 18.2 `POST /api/v1/submissions/{id}/voice-feedback` - Tải lên audio nhận xét dặn dò
+
+```go
+// UploadVoiceFeedback godoc
+// @Summary Tải lên audio nhận xét dặn dò (Voice Note)
+// @Description Giảng viên tải lên file ghi âm dặn dò trực tiếp trên trình duyệt (thời lượng 30s - 2 phút)
+// @Tags Teacher Grading
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Mã bài nộp submission (UUID)"
+// @Param audio formData file true "File ghi âm giọng nói (audio/webm, audio/mp3)"
+// @Success 200 {object} response.Envelope{data=dto.VoiceFeedbackResponse} "Tải audio thành công"
+// @Router /api/v1/submissions/{id}/voice-feedback [post]
+func (h *AssignmentHandler) UploadVoiceFeedback(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.UploadVoiceFeedback
+}
+```
+
+---
+
+### Phân Hệ 19: Hộp Thư Hỏi Đáp Tập Trung & Ủy Quyền Trợ Giảng (`internal/domain/inbox`)
+
+#### 19.1 `GET /api/v1/teacher/inbox/questions` - Danh sách câu hỏi cần giải đáp
+
+```go
+package handler
+
+import (
+	"net/http"
+	"backend/internal/domain/inbox/dto"
+	"backend/pkg/response"
+)
+
+// ListTeacherQuestions godoc
+// @Summary Hộp thư hỏi đáp tập trung của giảng viên
+// @Description Gom toàn bộ thắc mắc từ video bài giảng (Timestamped Q&A) và BTVN của các lớp phụ trách
+// @Tags Teacher Inbox
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param status query string false "Trạng thái (UNANSWERED, DELEGATED_TA, RESOLVED)"
+// @Param classId query string false "Lọc theo lớp học (UUID)"
+// @Success 200 {object} response.Envelope{data=[]dto.TeacherQuestionItemResponse} "Lấy danh sách thành công"
+// @Router /api/v1/teacher/inbox/questions [get]
+func (h *InboxHandler) ListTeacherQuestions(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.ListTeacherQuestions
+}
+```
+
+#### 19.2 `PUT /api/v1/teacher/inbox/questions/{id}/delegate-ta` - Phân công câu hỏi cho Trợ giảng
+
+```go
+// DelegateQuestionToTA godoc
+// @Summary Ủy quyền câu hỏi cho Trợ giảng kèm SLA
+// @Description Giảng viên giao câu hỏi cho Trợ giảng phụ trách lớp trả lời kèm cam kết thời hạn SLA 2 giờ
+// @Tags Teacher Inbox
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Mã câu hỏi thảo luận (UUID)"
+// @Param request body dto.DelegateTARequest true "Thông tin trợ giảng và ghi chú dặn dò"
+// @Success 200 {object} response.Envelope{data=dto.TeacherQuestionItemResponse} "Giao việc cho trợ giảng thành công"
+// @Router /api/v1/teacher/inbox/questions/{id}/delegate-ta [put]
+func (h *InboxHandler) DelegateQuestionToTA(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.DelegateQuestionToTA
+}
+```
+
+---
+
+### Phân Hệ 20: Sàn Dạy Thay & Lịch Rảnh Giảng Viên (`internal/domain/substitute`)
+
+#### 20.1 `POST /api/v1/teacher/sessions/{sessionId}/substitute-request` - Đề xuất nhờ dạy thay
+
+```go
+package handler
+
+import (
+	"net/http"
+	"backend/internal/domain/substitute/dto"
+	"backend/pkg/response"
+)
+
+// CreateSubstituteRequest godoc
+// @Summary Đề xuất nhờ đồng nghiệp dạy thay ca học
+// @Description Giảng viên bận đột xuất tạo yêu cầu nhờ dạy thay; hệ thống tự động tìm đồng nghiệp cùng chuyên môn đang rảnh ca đó
+// @Tags Teacher Substitute
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param sessionId path string true "Mã định danh buổi học cần nhờ dạy (UUID)"
+// @Param request body dto.CreateSubstituteRequest true "Lý do xin nghỉ và tài liệu bàn giao"
+// @Success 201 {object} response.Envelope{data=dto.SubstituteRequestResponse} "Tạo yêu cầu nhờ dạy thay thành công"
+// @Router /api/v1/teacher/sessions/{sessionId}/substitute-request [post]
+func (h *SubstituteHandler) CreateSubstituteRequest(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.CreateSubstituteRequest
+}
+```
+
+#### 20.2 `PUT /api/v1/teacher/substitute-requests/{id}/accept` - Đồng nghiệp nhận ca dạy thay
+
+```go
+// AcceptSubstituteRequest godoc
+// @Summary Đồng nghiệp nhận ca dạy thay
+// @Description Giảng viên rảnh ca nhận dạy thay cho đồng nghiệp; hệ thống tự động chuyển giao ca học và thù lao buổi dạy
+// @Tags Teacher Substitute
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Mã yêu cầu dạy thay (UUID)"
+// @Success 200 {object} response.Envelope{data=dto.SubstituteRequestResponse} "Nhận ca dạy thay thành công"
+// @Router /api/v1/teacher/substitute-requests/{id}/accept [put]
+func (h *SubstituteHandler) AcceptSubstituteRequest(w http.ResponseWriter, r *http.Request) {
+	// Implementation calls usecase.AcceptSubstituteRequest
+}
+```
+
+#### DTO Structs Bổ Sung (Teacher Live Cockpit, AI Review, Inbox & Substitute)
+
+```go
+package dto
+
+import (
+	"time"
+	"github.com/google/uuid"
+)
+
+type LiveCockpitResponse struct {
+	SessionID       uuid.UUID                 `json:"sessionId"`
+	ClassName       string                    `json:"className" example:"FE-K32"`
+	Topic           string                    `json:"topic" example:"Buổi 4: Goroutines & Channels"`
+	MeetingPlatform string                    `json:"meetingPlatform" example:"GOOGLE_MEET"`
+	MeetingURL      string                    `json:"meetingUrl" example:"https://meet.google.com/abc-defg-hij"`
+	IsCheckedIn     bool                      `json:"isCheckedIn" example:"true"`
+	CheckedInAt     *time.Time                `json:"checkedInAt,omitempty"`
+	Students        []CockpitStudentStatusDTO `json:"students"`
+	ActivePoll      *QuickPollResponse        `json:"activePoll,omitempty"`
+	WhiteboardURL   *string                   `json:"whiteboardUrl,omitempty"`
+}
+
+type CockpitStudentStatusDTO struct {
+	StudentID      uuid.UUID `json:"studentId"`
+	StudentName    string    `json:"studentName" example:"Nguyễn Hoàng Nam"`
+	AttendanceType string    `json:"attendanceType" example:"PRESENT_ONLINE"` // PRESENT_OFFLINE, PRESENT_ONLINE, ABSENT
+	IsRaisedHand   bool      `json:"isRaisedHand" example:"false"`
+}
+
+type CreateQuickPollRequest struct {
+	QuestionText    string   `json:"questionText" validate:"required,min=5" example:"Channel không đệm có chặn goroutine gửi không?"`
+	Options         []string `json:"options" validate:"required,min=2" example:"[\"Có chặn\", \"Không chặn\"]"`
+	DurationSeconds int      `json:"durationSeconds" validate:"min=30,max=300" example:"120"`
+}
+
+type QuickPollResponse struct {
+	PollID          uuid.UUID          `json:"pollId"`
+	QuestionText    string             `json:"questionText"`
+	Options         []PollOptionVoteDTO `json:"options"`
+	TotalVotes      int                `json:"totalVotes" example:"18"`
+	RemainingSeconds int               `json:"remainingSeconds" example:"85"`
+}
+
+type PollOptionVoteDTO struct {
+	ID         string  `json:"id" example:"A"`
+	Text       string  `json:"text" example:"Có chặn"`
+	VoteCount  int     `json:"voteCount" example:"15"`
+	Percentage float64 `json:"percentage" example:"83.3"`
+}
+
+type SaveWhiteboardRequest struct {
+	Title     string `json:"title" validate:"required" example:"Sơ đồ kiến trúc Go Worker Pool"`
+	BoardData string `json:"boardData" validate:"required"` // JSON serialization from Excalidraw
+}
+
+type WhiteboardResponse struct {
+	WhiteboardID uuid.UUID `json:"whiteboardId"`
+	Title        string    `json:"title"`
+	ExportPdfURL *string   `json:"exportPdfUrl,omitempty"`
+	UpdatedAt    time.Time `json:"updatedAt"`
+}
+
+type AICodeReviewDraftResponse struct {
+	SubmissionID   uuid.UUID `json:"submissionId"`
+	CleanCodeScore float64   `json:"cleanCodeScore" example:"88.0"`
+	LintIssues     []string  `json:"lintIssues" example:"[\"Line 24: Unhandled error in file read\", \"Line 38: Channel not closed\"]"`
+	FeedbackDraft  string    `json:"feedbackDraft" example:"Em hoàn thành tốt logic concurrency. Cần lưu ý đóng channel tại dòng 38 để tránh rò rỉ bộ nhớ."`
+}
+
+type VoiceFeedbackResponse struct {
+	SubmissionID uuid.UUID `json:"submissionId"`
+	AudioURL     string    `json:"audioUrl" example:"https://storage.lms.edu.vn/feedback/audio-submission-01.webm"`
+	DurationSec  int       `json:"durationSec" example:"45"`
+}
+
+type TeacherQuestionItemResponse struct {
+	QuestionID      uuid.UUID  `json:"questionId"`
+	StudentName     string     `json:"studentName" example:"Lê Hoàng Long"`
+	ClassName       string     `json:"className" example:"FE-K32"`
+	LessonTopic     string     `json:"lessonTopic" example:"Buổi 4: Goroutines"`
+	VideoTimestamp  *int       `json:"videoTimestamp,omitempty" example:"845"`
+	Content         string     `json:"content" example:"Thầy ơi tại sao chỗ này dùng unbuffered channel lại bị deadlock?"`
+	Status          string     `json:"status" example:"DELEGATED_TA"`
+	AssignedTAName  *string    `json:"assignedTaName,omitempty" example:"Trần Văn TA"`
+	CreatedAt       time.Time  `json:"createdAt"`
+}
+
+type DelegateTARequest struct {
+	TAUserID uuid.UUID `json:"taUserId" validate:"required"`
+	Notes    *string   `json:"notes,omitempty" example:"Học sinh bị deadlock do gửi trước khi có receiver, em chỉ dẫn lại slide 12 nhé"`
+}
+
+type CreateSubstituteRequest struct {
+	Reason      string  `json:"reason" validate:"required,min=5" example:"Bị sốt xuất huyết nhập viện, nhờ đồng nghiệp dạy thay tối T5"`
+	HandoffNotes *string `json:"handoffNotes,omitempty" example:"Đã up slide Buổi 4 và starter code trong bài giảng"`
+}
+
+type SubstituteRequestResponse struct {
+	RequestID           uuid.UUID  `json:"requestId"`
+	SessionID           uuid.UUID  `json:"sessionId"`
+	SessionDate         string     `json:"sessionDate" example:"2026-10-18"`
+	TimeRange           string     `json:"timeRange" example:"19:30 - 21:30"`
+	OriginalTeacherName string     `json:"originalTeacherName" example:"ThS. Nguyễn Văn Tuấn"`
+	SubstituteTeacherName *string  `json:"substituteTeacherName,omitempty"`
+	Status              string     `json:"status" example:"PENDING_OFFER"`
 }
 ```
 

@@ -2,7 +2,7 @@
 
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
 > **Tài liệu:** `docs/test-plan.md`  
-> **Phiên bản:** 1.0.0  
+> **Phiên bản:** 2.2.0 (Bổ sung Nhóm 10: Giảng Viên - Live Class Cockpit, AI Review, Voice Note, Hộp Thư Q&A, Dạy Thay & Sổ Tay Sư Phạm)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
@@ -137,6 +137,20 @@ flowchart TD
 | **TC-QUIZ-02** | Trắc nghiệm | Nộp bài thi trắc nghiệm, tự động chấm điểm và đồng bộ Sổ điểm | 1. Học sinh chọn đáp án cho 20 câu và bấm nộp bài.<br>2. Gọi `POST /api/v1/quizzes/{id}/submit`. | Hệ thống so khớp đáp án, tính điểm trong 0.5s; Trả về kết quả đúng/sai và lời giải; Điểm tự động ghi vào Sổ điểm tổng kết lớp học (`gradebook`). | **P0** |
 | **TC-CHURN-01** | Churn Radar | Radar phát hiện học sinh có nguy cơ bỏ học | 1. Học sinh Long vắng 2 buổi liên tiếp và nợ 3 bài tập.<br>2. Điều phối viên truy cập `/admin/analytics/churn-risk`. | Tên Long xuất hiện trên danh sách cảnh báo đỏ (Mức độ: `HIGH`); Hiển thị nút thao tác nhanh: Gọi điện chăm sóc, Xếp lịch học bù, Gia hạn deadline. | **P0** |
 | **TC-CONTRACT-01** | Hợp đồng & PDF | Ký hợp đồng đào tạo điện tử và xuất PDF | 1. Học sinh mở hợp đồng cam kết việc làm trực tuyến.<br>2. Xác nhận chữ ký số/OTP.<br>3. Tải file PDF hợp đồng. | Hợp đồng chuyển trạng thái `SIGNED`; File PDF sinh ra có mã băm bảo mật SHA-256 và dấu mộc điện tử của trung tâm. | **P1** |
+
+---
+
+### Nhóm 10: Giảng Viên - Live Class Cockpit, AI Code Review, Voice Note, Hộp Thư Q&A & Dạy Thay (Teacher Portal Advanced)
+
+| Mã Test Case | Phân hệ | Mô tả kịch bản | Các bước thực hiện | Kết quả mong đợi | Mức độ |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **TC-COCKPIT-01** | Live Cockpit | Khởi động lớp 1-click, tự động check-in GV, điểm danh nhanh & tạo Mini Poll | 1. Giảng viên truy cập `/teacher/classes/{id}/live` trước giờ học 5 phút.<br>2. Nhấp nút [Bắt đầu lớp học].<br>3. Tích điểm danh nhanh 1 chạm cho cả lớp.<br>4. Tạo nhanh Mini Poll: "Đã hiểu bài 1 chưa?" với thời gian 120s. | Tab Google Meet/Zoom tự động mở; Hệ thống tự động ghi nhận Check-in ca dạy của GV; Danh sách học sinh cập nhật trạng thái có mặt; Học viên nhận realtime popup bình chọn và biểu đồ kết quả hiển thị tức thì. | **P0** |
+| **TC-WHITEBOARD-01** | Whiteboard | Bảng vẽ điện tử tương tác nhiều người và xuất bản PDF sau ca học | 1. Giảng viên mở tab Bảng vẽ Whiteboard trên Cockpit.<br>2. Vẽ sơ đồ kiến trúc và viết chú thích code.<br>3. Hệ thống tự động autosave mỗi 10 giây.<br>4. Kết thúc ca học, bấm [Xuất PDF lưu trữ]. | Dữ liệu vẽ Excalidraw JSON lưu chính xác; File PDF tổng hợp bảng vẽ được tạo và tự động đính kèm vào mục tài liệu của buổi học cho học viên xem lại. | **P1** |
+| **TC-AICODE-01** | AI Code Review | Trợ lý AI phân tích Clean Code, phát hiện bug và tạo bản nháp nhận xét | 1. Học viên nộp bài tập code Go xử lý Goroutines.<br>2. Giảng viên bấm [AI Phân tích bài nộp].<br>3. Kiểm tra danh sách gợi ý lỗi và điểm số đề xuất. | Trợ lý AI quét mã, liệt kê các vi phạm concurrency (data race), gợi ý điểm 8.5/10 và sinh bản nháp nhận xét sư phạm chi tiết; Giảng viên có thể chỉnh sửa trước khi lưu điểm chính thức. | **P0** |
+| **TC-VOICE-01** | Voice Feedback | Ghi âm nhận xét bằng giọng nói (Voice Note) gửi học viên | 1. Tại màn hình chấm bài Monaco, GV bấm nút [Ghi âm nhận xét] (Microphone).<br>2. Nói nhận xét 45 giây và bấm [Lưu & Gửi].<br>3. Học sinh mở bài tập đã chấm để nghe phản hồi. | File âm thanh (WebM/AAC) upload thành công lên Object Storage; Trình phát audio hiển thị rõ sóng âm thanh; Học sinh nghe rõ phản hồi của thầy cô trực tiếp trên giao diện bài nộp. | **P1** |
+| **TC-INBOX-TA-01** | Q&A Inbox & TA | Hộp thư câu hỏi tập trung, trả lời nhanh và ủy quyền cho Trợ giảng kèm SLA | 1. Học sinh bình luận hỏi đáp tại phút 12:45 bài giảng video.<br>2. Câu hỏi hiển thị ngay trong Hộp thư Q&A của GV.<br>3. GV chọn mẫu trả lời nhanh (Snippet) hoặc bấm [Giao cho Trợ giảng] với SLA 2 giờ. | Câu hỏi được phân loại theo lớp và bài; Trợ giảng nhận thông báo đẩy và đồng hồ đếm ngược SLA; Khi TA trả lời, hệ thống gửi thông báo phản hồi ngay cho học sinh. | **P0** |
+| **TC-SUBSTITUTE-01** | Chợ dạy thay | Yêu cầu dạy thay khẩn cấp, tự động khớp lịch rảnh và chuyển đổi thù lao | 1. GV A có việc đột xuất vào tối Thứ 4, bấm [Tạo yêu cầu dạy thay].<br>2. Hệ thống quét `teacher_availabilities` tìm các GV cùng bộ môn đang rảnh.<br>3. GV B nhận được thông báo, bấm [Đồng ý dạy thay]. | Ca dạy của lớp tự động cập nhật `assignedTeacherId = GV_B`; Bảng tính công và thù lao buổi dạy đó tự động được ghi nhận cho GV B trong kỳ tính lương tháng. | **P0** |
+| **TC-PEDAGOGY-01** | Sổ tay sư phạm | Lưu ghi chú sư phạm bảo mật nội bộ và ngân hàng đề bài cá nhân | 1. Giảng viên nhập ghi chú sư phạm cho học viên: "Học viên tiếp thu logic nhanh nhưng lười viết test".<br>2. Kiểm tra quyền hiển thị.<br>3. Lưu bài tập mẫu vào Ngân hàng đề bài riêng và bấm [Nhân bản sang Lớp FE-K33]. | Ghi chú sư phạm chỉ GV và Trợ giảng đọc được, Học sinh và Phụ huynh hoàn toàn KHÔNG thấy; Đề bài mẫu được nhân bản sang lớp mới với đầy đủ test case và rubric. | **P1** |
 
 ---
 

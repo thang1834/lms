@@ -4,7 +4,7 @@
 > **Tài liệu:** `docs/implementation-plan.md`  
 > **Kiến trúc Blueprint:** [`gmhafiz/go8`](https://github.com/gmhafiz/go8) (Go 1.23+, `go-chi/chi/v5`, PostgreSQL 16, Goose SQL Migrations, `swaggo/swag`, `go-playground/validator/v10`)  
 > **Tài liệu tham chiếu:** [`docs/architecture.md`](file:///c:/Users/ducth/OneDrive/M%C3%A1y%20t%C3%ADnh/LMS/docs/architecture.md), [`docs/api-specification.md`](file:///c:/Users/ducth/OneDrive/M%C3%A1y%20t%C3%ADnh/LMS/docs/api-specification.md), [`docs/requirements.md`](file:///c:/Users/ducth/OneDrive/M%C3%A1y%20t%C3%ADnh/LMS/docs/requirements.md)  
-> **Phiên bản kế hoạch:** 2.1.0 (Bổ sung Multi-Campus, Make-up Scheduling, Auto-Quiz Bank, Student Churn Radar & Training Contracts - Tổng cộng 75+ REST API)  
+> **Phiên bản kế hoạch:** 2.2.0 (Bổ sung Live Class Cockpit, Whiteboard, AI Code Review, Voice Note, Q&A Inbox, Substitute Marketplace & Pedagogy - Tổng cộng 90+ REST API, 23 Domains)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
@@ -33,9 +33,9 @@ Hệ sinh thái Backend được xây dựng tuân thủ nghiêm ngặt mô hìn
 
 ---
 
-## 2. 📋 Danh Sách Toàn Bộ 75+ REST API Dự Tính (Chi Tiết 19 Domains)
+## 2. 📋 Danh Sách Toàn Bộ 90+ REST API Dự Tính (Chi Tiết 23 Domains)
 
-Dưới đây là danh sách phân rã toàn bộ 75+ endpoint API dự tính xây dựng, chia theo 19 phân hệ nghiệp vụ:
+Dưới đây là danh sách phân rã toàn bộ 90+ endpoint API dự tính xây dựng, chia theo 23 phân hệ nghiệp vụ:
 
 ### Phân Hệ 1: Xác Thực & Quản Lý Người Dùng (`internal/domain/auth` & `user`)
 | Method | Endpoint | Mô tả chức năng | Quyền hạn |
@@ -226,6 +226,49 @@ Dưới đây là danh sách phân rã toàn bộ 75+ endpoint API dự tính x�
 | `POST` | `/api/v1/contracts/{id}/sign` | Ký hợp đồng đào tạo điện tử (OTP / Chữ ký số) | Student / Parent |
 | `GET` | `/api/v1/contracts/{id}/pdf` | Tải file hợp đồng PDF có dấu mộc điện tử (Go PDF Engine) | Student / Parent / Admin |
 
+### Phân Hệ 20: Giảng Viên - Live Class Cockpit & Digital Whiteboard (`internal/domain/cockpit`)
+| Method | Endpoint | Mô tả chức năng | Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/teacher/sessions/{id}/start-cockpit` | Khởi động lớp 1-click (Auto check-in GV, lấy link Meet/Zoom, phòng học) | Teacher |
+| `POST` | `/api/v1/teacher/sessions/{id}/quick-attendance` | Điểm danh nhanh 1 chạm cho cả lớp | Teacher |
+| `GET` | `/api/v1/teacher/sessions/{id}/whiteboards` | Lấy danh sách bảng vẽ của buổi học | Teacher / Student |
+| `POST` | `/api/v1/teacher/sessions/{id}/whiteboards` | Tạo mới bảng vẽ hoặc autosave state Excalidraw JSON | Teacher |
+| `POST` | `/api/v1/teacher/whiteboards/{id}/export-pdf` | Xuất bảng vẽ ra file PDF đính kèm buổi học | Teacher |
+| `POST` | `/api/v1/teacher/sessions/{id}/polls` | Tạo câu hỏi bình chọn tương tác nhanh (Mini Poll 2 phút) | Teacher |
+| `POST` | `/api/v1/polls/{id}/vote` | Học viên bình chọn đáp án realtime | Student |
+| `GET` | `/api/v1/polls/{id}/results` | Lấy kết quả bình chọn theo thời gian thực | Teacher / Student |
+
+### Phân Hệ 21: Giảng Viên - Trợ Lý AI Chấm Bài & Voice Note Feedback (`internal/domain/assignment` & `pedagogy`)
+| Method | Endpoint | Mô tả chức năng | Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/submissions/{id}/ai-review` | Kích hoạt AI phân tích mã nguồn Clean Code & sinh nhận xét nháp | Teacher / TA |
+| `GET` | `/api/v1/submissions/{id}/ai-review` | Xem kết quả phân tích AI và gợi ý điểm số | Teacher / TA |
+| `POST` | `/api/v1/submissions/{id}/voice-feedback` | Upload file ghi âm nhận xét giọng nói (Voice Note 30s-2m) | Teacher / TA |
+| `GET` | `/api/v1/submissions/{id}/voice-feedback` | Nghe và tải bản nhận xét giọng nói của giảng viên | Student / Parent / Teacher |
+
+### Phân Hệ 22: Giảng Viên - Hộp Thư Q&A Tập Trung & Ủy Quyền Trợ Giảng (`internal/domain/inbox`)
+| Method | Endpoint | Mô tả chức năng | Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/teacher/inbox` | Danh sách câu hỏi thắc mắc tập trung (Video & BTVN) | Teacher / TA |
+| `POST` | `/api/v1/teacher/inbox/{id}/delegate` | Chuyển giao câu hỏi cho Trợ giảng phụ trách (kèm SLA 2h) | Teacher |
+| `POST` | `/api/v1/teacher/inbox/{id}/reply` | Giảng viên/TA trả lời thắc mắc (hỗ trợ câu trả lời mẫu Snippet) | Teacher / TA |
+| `GET` | `/api/v1/teacher/inbox/snippets` | Danh mục các mẫu câu trả lời nhanh thường gặp | Teacher / TA |
+| `POST` | `/api/v1/teacher/inbox/snippets` | Tạo mới mẫu câu trả lời nhanh | Teacher |
+
+### Phân Hệ 23: Giảng Viên - Chợ Dạy Thay, Lịch Rảnh & Sổ Tay Sư Phạm (`internal/domain/substitute` & `pedagogy`)
+| Method | Endpoint | Mô tả chức năng | Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/teacher/availabilities` | Lấy lịch rảnh cố định trong tuần của giảng viên | Teacher |
+| `PUT` | `/api/v1/teacher/availabilities` | Cập nhật các khung giờ rảnh hàng tuần | Teacher |
+| `POST` | `/api/v1/teacher/substitute-requests` | Tạo yêu cầu nhờ dạy thay cho buổi học sắp tới | Teacher |
+| `GET` | `/api/v1/teacher/substitute-market` | Chợ ca dạy thay mở cho các GV cùng bộ môn nhận | Teacher |
+| `POST` | `/api/v1/teacher/substitute-requests/{id}/accept` | Nhận ca dạy thay (tự động cập nhật lịch & chuyển thù lao) | Teacher |
+| `GET` | `/api/v1/teacher/students/{studentId}/notes` | Xem sổ tay sư phạm bảo mật về học sinh (chỉ GV/TA xem) | Teacher / TA |
+| `POST` | `/api/v1/teacher/students/{studentId}/notes` | Thêm ghi chú sư phạm cá nhân về học sinh | Teacher / TA |
+| `GET` | `/api/v1/teacher/assignment-banks` | Danh sách kho bài tập mẫu cá nhân của giảng viên | Teacher |
+| `POST` | `/api/v1/teacher/assignment-banks` | Lưu bài tập mẫu vào ngân hàng cá nhân | Teacher |
+| `POST` | `/api/v1/teacher/assignment-banks/{id}/clone-to-class` | Nhân bản 1-click bài tập từ kho mẫu sang lớp mới | Teacher |
+
 ---
 
 ## 3. 🔭 Thiết Kế Hệ Thống Quan Sát OpenTelemetry (Logs, Metrics, Traces - Chuẩn `gmhafiz/go8`)
@@ -405,10 +448,12 @@ flowchart LR
 - **Domain `attendance`:**
   - Check-in/Check-out ca dạy GV, điểm danh học sinh Hybrid (Offline/Online/Late/Absent).
 
-### Pha 4: Cổng Học Tập Học Viên & Chấm Điểm (Learning & Grading Portal)
+### Pha 4: Cổng Học Tập Học Viên, Trợ Lý AI & Chấm Điểm (Learning, AI Assistance & Grading)
 - **Domain `assignment`:**
   - Giao bài tập theo lớp, học viên nộp code Monaco Editor hoặc GitHub.
   - Cổng chấm bài của giáo viên theo lớp: Monaco code viewer, chấm điểm Rubric, tự động đồng bộ vào Sổ điểm lớp học (**Gradebook**).
+  - Tích hợp **Trợ lý AI Code Review** tự động quét Clean Code, phân tích lỗi tiềm ẩn và tạo bản nháp nhận xét sư phạm.
+  - Tích hợp **Voice Note Feedback** cho phép giáo viên ghi âm nhận xét giọng nói 30s-2m trực tiếp trên trình duyệt.
 - **Domain `evaluation`:**
   - Học sinh gửi đánh giá buổi học trong vòng 24h.
 - **Domain `capstone`:**
@@ -416,7 +461,30 @@ flowchart LR
 - **Domain `certificate`:**
   - Cấp chứng chỉ số và API tra cứu công khai `GET /api/v1/verify/{certificateCode}`.
 
-### Pha 5: Tài Chính, Khuyến Mãi & Bảng Lương (Billing, Discounts & Payroll)
+### Pha 5: Cơ Sở Chi Nhánh, Khảo Thí, Học Bù & Hợp Đồng (Campus, Makeup, Quiz & Contracts)
+- **Domain `campus`:** Quản lý chi nhánh, danh mục phòng học và Room Conflict Guard.
+- **Domain `makeup`:** Phát hiện học sinh vắng, điều phối ghép lớp song song hoặc kèm 1-1, đồng bộ chuyên cần.
+- **Domain `quiz`:** Ngân hàng câu hỏi trắc nghiệm, thuật toán sinh đề ngẫu nhiên xáo trộn đáp án, tự chấm điểm.
+- **Domain `analytics`:** Dashboard KPIs, Student Churn Radar cảnh báo nguy cơ bỏ học, Ma trận giảng viên.
+- **Domain `contract`:** Ký hợp đồng đào tạo điện tử, xuất PDF bảo mật SHA-256 có con dấu trung tâm.
+
+### Pha 6: Cổng Giảng Viên Chuyên Nghiệp (Teacher Cockpit, Whiteboard, Inbox & Substitute)
+- **Domain `cockpit`:**
+  - Live Class Cockpit 1-click khởi động lớp (tự động check-in GV, mở Meet/Zoom, phòng học).
+  - Điểm danh nhanh 1 chạm cho toàn bộ sĩ số lớp học.
+  - Bảng vẽ kỹ thuật số tương tác (Digital Whiteboard) với Autosave JSON và xuất PDF tài liệu sau ca học.
+  - Tạo nhanh câu hỏi bình chọn trực tiếp (Mini Poll 2 phút) kèm biểu đồ kết quả realtime.
+- **Domain `inbox`:**
+  - Hộp thư Q&A tập trung gom thắc mắc từ video bài giảng và bài tập.
+  - Bộ mẫu câu trả lời nhanh (Snippets) và cơ chế ủy quyền Trợ giảng phụ trách kèm SLA 2 giờ.
+- **Domain `substitute`:**
+  - Thiết lập lịch rảnh cố định hàng tuần (`teacher_availabilities`).
+  - Chợ dạy thay khẩn cấp: Tự động ghép nối đồng nghiệp cùng môn có lịch rảnh, tự động chuyển thù lao ca dạy.
+- **Domain `pedagogy`:**
+  - Sổ tay sư phạm bảo mật nội bộ về từng học viên (chỉ GV và Trợ giảng xem được).
+  - Ngân hàng bài tập mẫu cá nhân và công cụ nhân bản 1-click sang các lớp học mới.
+
+### Pha 7: Tài Chính, Khuyến Mãi & Bảng Lương (Billing, Discounts & Payroll)
 - **Domain `discount`:**
   - Quản lý mã giảm giá, kiểm tra điều kiện áp dụng và tính tiền khấu trừ.
 - **Domain `billing`:**
@@ -424,9 +492,9 @@ flowchart LR
   - Mua khóa học có áp coupon, tính `finalAmount` và sinh mã VietQR Napas247 động.
   - Webhook tiếp nhận thanh toán SePay/Casso tự động kích hoạt enrollment trong 3s.
 - **Domain `payroll`:**
-  - Tự động quét ca dạy trong tháng, tính lương cơ sở theo bậc lương, thưởng KPI (đánh giá $\ge 4.5$), phạt đi muộn, Admin duyệt quyết toán.
+  - Tự động quét ca dạy trong tháng (bao gồm cả ca dạy thay), tính lương cơ sở theo bậc lương, thưởng KPI (đánh giá $\ge 4.5$), phạt đi muộn, Admin duyệt quyết toán.
 
-### Pha 6: Worker, OTel Grafana Dashboards, Swagger & Kiểm Thử Toàn Trình (Automation & QA)
+### Pha 8: Worker, OTel Grafana Dashboards, Swagger & Kiểm Thử Toàn Trình (Automation & QA)
 - **Domain `notification`:**
   - Worker quét điểm danh sau 15p bắn tin báo vắng/đủ.
   - Worker quét ca học sau 10p cảnh báo GV đi muộn.
@@ -471,7 +539,8 @@ python .agents/skills/vulnerability-scanner/scripts/security_scan.py .
 - **Kiểm tra Traces trên Jaeger (`http://localhost:16686`):** Gửi request API (đăng nhập, lấy danh sách khóa học) và kiểm tra Waterfall Span hiển thị đầy đủ tầng HTTP `otelchi` và tầng CSDL `otelsql`.
 - **Kiểm tra Metrics trên Prometheus (`http://localhost:9090`):** Kiểm tra các metric `http_server_requests_total` và `lms_student_active_sessions` tăng trưởng chính xác.
 - **Kiểm tra Logs & Trace Correlation trên Grafana (`http://localhost:3300`):** Mở Grafana Explore, truy vấn Loki logs, chọn một log entry và nhấp vào nút **TraceID** để xem toàn bộ luồng request tương ứng trong Jaeger/Tempo.
-- **Kiểm tra Swagger UI (`http://localhost:8080/swagger/index.html`):** Kiểm tra danh sách 55+ endpoints hiển thị đầy đủ và có thể gửi request thử nghiệm.
+- **Kiểm tra Swagger UI (`http://localhost:8080/swagger/index.html`):** Kiểm tra danh sách 90+ endpoints hiển thị đầy đủ và có thể gửi request thử nghiệm.
 - **Kiểm tra Cấu hình Website SUPER_ADMIN:** Gọi API cập nhật màu sắc Header/Footer, Logo, Favicon; kiểm tra Client Nuxt UI render đúng nhận diện mới.
 - **Kiểm tra tính năng Soft Delete:** Thực hiện xóa môn học hoặc lớp học, kiểm tra trong PostgreSQL cột `deleted_at` được gán giờ và query `GET /api/v1/subjects` không trả về bản ghi đó.
 - **Kiểm tra mã VietQR:** Tạo đơn hàng áp coupon giảm giá, quét mã VietQR bằng app ngân hàng thật kiểm tra đúng số tiền và nội dung chuyển khoản.
+- **Kiểm tra Live Class Cockpit & AI Code Review:** Khởi động lớp học 1-click từ Cockpit, kiểm tra tự động check-in GV và render bảng vẽ Excalidraw; Kích hoạt AI phân tích bài tập học sinh và kiểm tra bản nháp nhận xét sư phạm tự sinh.

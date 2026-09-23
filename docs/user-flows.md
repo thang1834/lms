@@ -772,4 +772,163 @@ sequenceDiagram
 +---------------------------------------------------------------------------------------+
 ```
 
+---
+
+## 18. Luồng 16: Giảng Viên Sử Dụng Live Class Cockpit Trong Ca Dạy
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Teacher as Giảng viên
+    participant UI as Live Class Cockpit (/teacher/classes/:id/live)
+    participant API as Backend Server
+    participant DB as PostgreSQL Database
+    actor Students as Học viên trong lớp
+
+    Teacher ->> UI: Truy cập Live Cockpit trước giờ học 5 phút
+    Teacher ->> UI: Bấm nút [ 1-Click Launch Meeting ]
+    UI ->> API: POST /api/v1/attendance/teacher-checkin (action: CHECK_IN)
+    API ->> DB: Ghi nhận check-in thực tế của giáo viên
+    UI ->> Teacher: Tự động mở Google Meet / Zoom trong tab mới
+
+    Note over Teacher, Students: Điểm danh nhanh 1 chạm (Quick Attendance)
+    Teacher ->> UI: Nhìn danh sách thấy chỉ có 1 bạn Nam vắng
+    Teacher ->> UI: Nhấn [ Tất cả có mặt ] -> Bỏ tích riêng Nam (Vắng) -> Bấm [ Lưu điểm danh ]
+    UI ->> API: POST /api/v1/attendance/student-batch
+    API ->> DB: Lưu điểm danh 19 có mặt, 1 vắng; kích hoạt cảnh báo vắng sau 15p
+
+    Note over Teacher, Students: Giảng bài & Bảng trắng kỹ thuật số (Whiteboard)
+    Teacher ->> UI: Mở tab [ Digital Whiteboard ] vẽ sơ đồ kiến trúc Concurrency
+    Teacher ->> UI: Nhấn [ Lưu & Chia sẻ sơ đồ bài giảng ]
+    UI ->> API: POST /api/v1/teacher/cockpit/:id/whiteboard
+    API ->> DB: Lưu nét vẽ và xuất file PDF đính kèm buổi học
+
+    Note over Teacher, Students: Kiểm tra độ hiểu bài ngay tại lớp (Quick Poll)
+    Teacher ->> UI: Nhập câu hỏi: "Channel unbuffered có chặn sender không?" -> Bấm [ Phát Poll 2 Phút ]
+    UI ->> API: POST /api/v1/teacher/cockpit/:id/quick-poll
+    API -->> Students: Hiển thị popup bình chọn A / B trên màn hình học viên
+    Students ->> UI: Bấm chọn đáp án
+    UI -->> Teacher: Cập nhật biểu đồ phần trăm real-time (85% chọn "Có chặn")
+    Teacher ->> Students: Khen ngợi cả lớp nắm vững bài và chuyển sang phần bài tập thực hành
+```
+
+---
+
+## 19. Luồng 17: Giảng Viên Sử Dụng Trợ Lý AI Chấm Điểm & Nhận Xét Giọng Nói (Voice Note)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Teacher as Giảng viên
+    participant UI as Teacher Grading Workspace
+    participant AI as AI Code Review Engine
+    participant API as Backend Server
+    participant DB as PostgreSQL Database
+    actor Student as Học viên nhận bài chấm
+
+    Teacher ->> UI: Mở bài nộp lập trình của học sinh Tuấn Anh (Lớp FE-K32)
+    Teacher ->> UI: Bấm nút [ 🤖 Trợ lý AI Quét Bài ]
+    UI ->> API: POST /api/v1/submissions/:id/ai-review
+    API ->> AI: Gửi mã nguồn Monaco / GitHub repo của học viên
+    AI ->> AI: Quét linter, phát hiện 1 lỗi unclosed channel và vi phạm Clean Code
+    AI -->> API: Trả về CleanCodeScore: 88, gợi ý bản nháp nhận xét sư phạm chi tiết
+    API -->> UI: Điền sẵn nhận xét mẫu vào khung đánh giá
+
+    Teacher ->> UI: Đọc lướt bản nháp của AI trong 10 giây, thấy rất chuẩn xác
+    Teacher ->> UI: Bấm nút [ 🎙️ Ghi âm dặn dò (Voice Note) ]
+    Teacher ->> UI: Thu âm 40 giây: "Tuấn Anh lưu ý nhớ dùng defer close(ch) tại dòng 38 nhé, code logic rất sáng tạo..."
+    Teacher ->> UI: Bấm [ Lưu Điểm 90 & Gửi Bài ]
+    UI ->> API: POST /api/v1/classes/:classId/assignments/:asgId/submissions/:id/grade
+    API ->> DB: Lưu điểm 90, audio URL và nhận xét; đồng bộ Sổ điểm lớp học
+    API -->> Student: Gửi thông báo kèm file âm thanh và nhận xét của thầy cô
+```
+
+---
+
+## 20. Luồng 18: Giảng Viên Nhờ Đồng Nghiệp Dạy Thay & Tự Động Quyết Toán
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor TeacherA as Giảng viên A (Bận đột xuất)
+    participant UI as Teacher Portal
+    participant API as Backend Server
+    participant DB as PostgreSQL Database
+    actor TeacherB as Giảng viên B (Cùng chuyên môn, rảnh ca)
+    actor Student as Học sinh trong lớp
+
+    TeacherA ->> UI: Tại buổi học tối thứ Năm, bấm [ Nhờ Dạy Thay ]
+    TeacherA ->> UI: Chọn lý do: "Bị ốm sốt xuất huyết" kèm ghi chú dặn dò giáo án
+    UI ->> API: POST /api/v1/teacher/sessions/:id/substitute-request
+    API ->> DB: 1. Truy vấn các GV dạy cùng bộ môn Golang
+    API ->> DB: 2. Kiểm tra `teacher_availabilities` thấy GV B đang rảnh ca tối thứ Năm
+    API ->> DB: Tạo bản ghi substitute_requests (status: PENDING_OFFER)
+    API -->> TeacherB: Bắn thông báo push: "Đồng nghiệp Tuấn nhờ bạn dạy thay ca tối T5 (FE-K32)"
+
+    TeacherB ->> UI: Mở ứng dụng, xem thông tin lớp và đề cương bài giảng buổi 4
+    TeacherB ->> UI: Bấm nút [ Đồng Ý Nhận Ca Dạy ]
+    UI ->> API: PUT /api/v1/teacher/substitute-requests/:id/accept
+    API ->> DB: 1. Cập nhật `class_sessions.assigned_teacher_id = TeacherB`
+    API ->> DB: 2. Ghi nhận thù lao ca dạy đó cộng vào bảng lương tháng của TeacherB
+    API ->> DB: 3. Chuyển status = ACCEPTED
+    API -->> TeacherA: Thông báo: "Thầy Đăng đã nhận ca dạy thay giúp bạn!"
+    API -->> Student: Thông báo lớp: "Buổi 4 tối T5 ThS. Vũ Hải Đăng sẽ phụ trách lớp"
+```
+
+---
+
+## 21. Bổ Sung Bản Thiết Kế Giao Diện Dành Cho Giáo Viên (Teacher Wireframes)
+
+### Wireframe 4: Bảng Điều Khiển Ca Dạy Trực Tiếp (`/teacher/classes/{id}/live`)
+
+```text
++---------------------------------------------------------------------------------------+
+|  LMS CENTER - BẢNG ĐIỀU KHIỂN CA DẠY (LIVE COCKPIT)               GV: ThS. Hoàng Nam  |
++---------------------------------------------------------------------------------------+
+|  LỚP: FE-K32 | CA: 19:30 - 21:30 | BÀI: Buổi 4 - Concurrency & Channels              |
+|                                                                                       |
+|  [ 🔴 GOOGLE MEET: meet.google.com/abc-xyz ]   [ ĐÃ CHECK-IN CA DẠY LÚC 19:28 V ]    |
+|                                                                                       |
+|  +---------------------------------------+  +--------------------------------------+  |
+|  | DANH SÁCH ĐIỂM DANH NHANH (SĨ SỐ 20)  |  | BẢNG TƯƠNG TÁC & MINI POLL           |  |
+|  +---------------------------------------+  +--------------------------------------+  |
+|  | [ Tất Cả Có Mặt ] [ Lưu Điểm Danh ]   |  | [ Phát Quick Poll 2 Phút ]           |  |
+|  | [x] 1. Nguyễn Hoàng Nam   (Online)    |  | Câu hỏi: Channel không đệm có chặn?  |  |
+|  | [x] 2. Trần Thảo Linh     (Offline)   |  | (o) Có chặn [===========> ] 85%      |  |
+|  | [ ] 3. Lê Hoàng Long      (Vắng mặt)  |  | ( ) Không chặn [==>       ] 15%      |  |
+|  | [x] 4. Đỗ Minh Quân       (Giơ tay ✋) |  | Thời gian còn lại: 01:15             |  |
+|  +---------------------------------------+  +--------------------------------------+  |
+|                                                                                       |
+|  [ 🎨 MỞ BẢNG TRẮNG DIGITAL WHITEBOARD ]    [ 📂 GIÁO ÁN SLIDE PDF ]   [ 💻 CODE MẪU ]|
++---------------------------------------------------------------------------------------+
+```
+
+### Wireframe 5: Không Gian Chấm Bài Code AI & Thu Âm Lời Dặn Dò
+
+```text
++---------------------------------------------------------------------------------------+
+|  CHẤM BÀI TẬP VỀ NHÀ: BTVN-03 Goroutines (Học viên: Trần Tuấn Anh)     [ Đóng / Lưu ]  |
++---------------------------------------------------------------------------------------+
+|  MÃ NGUỒN HỌC VIÊN NỘP (MONACO VIEWER):  |  TRỢ LÝ CHẤM ĐIỂM & ĐÁNH GIÁ SƯ PHẠM:      |
+|  1  package main                         |                                             |
+|  2  func worker(ch chan int) {           |  [ 🤖 AI QUÉT BÀI TỰ ĐỘNG ]                 |
+|  3     val := <-ch                       |  - Điểm Clean Code gợi ý: 88/100            |
+|  4     // Logic xử lý                    |  - Cảnh báo: Dòng 14 channel chưa close.    |
+|  5  }                                    |                                             |
+|  ...                                     |  NHẬN XÉT SƯ PHẠM (ĐÃ ĐIỀN BẢN NHÁP AI):    |
+|  14 ch := make(chan int)                 |  [Em làm rất tốt phần khởi tạo goroutine.  ]|
+|  15 go worker(ch)                        |  [Lưu ý dòng 14 nhớ defer close(ch) nhé!   ]|
+|                                          |                                             |
+|                                          |  ĐIỂM SỐ: [ 90 ] / 100                      |
+|                                          |                                             |
+|                                          |  [ 🎙️ BẤM GHI ÂM DẶN DÒ (VOICE NOTE) ]     |
+|                                          |  ▶️ || 00:38 / 00:40 (Đã ghi âm thành công) |
+|                                          |                                             |
+|                                          |  [ GHI CHÚ SƯ PHẠM KÍN (CHỈ TA XEM) ]       |
+|                                          |  [Tuấn Anh tiếp thu nhanh, cần giao thêm lab]|
+|                                          |                                             |
+|                                          |        [ LƯU ĐIỂM & TRẢ BÀI HỌC VIÊN ]      |
++---------------------------------------------------------------------------------------+
+```
+
 

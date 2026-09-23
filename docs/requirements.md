@@ -493,6 +493,83 @@ Cung cấp cho Ban Giám đốc và Quản lý Đào tạo cái nhìn toàn cả
 
 ---
 
+### Phân hệ 23: Không Gian Lớp Học Trực Tuyến & Bảng Điều Khiển Ca Dạy (Live Class Cockpit & Digital Whiteboard)
+
+Tối ưu hóa trải nghiệm trực tiếp của giảng viên trong từng giờ lên lớp:
+
+- **FR-COCKPIT-01 (Màn hình Điều khiển Ca dạy Tập trung - Live Cockpit Workspace):**
+  - Giao diện chuyên dụng `/teacher/classes/{id}/live`:
+    - **1-Click Launch:** Mở phòng học Google Meet / Zoom chỉ với 1 click và tự động kích hoạt Check-in chấm công ca dạy.
+    - **Quick Attendance Widget:** Thanh điểm danh 1 chạm có nút *"Tất cả có mặt"* $\to$ GV chỉ cần tích nhanh 1-2 học viên vắng/muộn.
+    - **Trình chiếu Giáo án & Bài tập:** Tích hợp bộ xem slide PDF và starter code ngay bên cạnh danh sách học sinh.
+- **FR-COCKPIT-02 (Tương Tác Tức Thì - Quick Poll / Mini Quiz 2 Phút):**
+  - Giảng viên có thể phát nhanh 1 câu hỏi bình chọn / trắc nghiệm ngắn trong 2 phút để kiểm tra độ hiểu bài ngay tại lớp.
+  - Học viên bình chọn trực tiếp trên điện thoại/laptop; hệ thống hiển thị biểu đồ phần trăm kết quả theo thời gian thực (Real-time).
+- **FR-COCKPIT-03 (Bảng Trắng Kỹ Thuật Số Tương Tác - Interactive Digital Whiteboard):**
+  - Tích hợp bảng vẽ kỹ thuật số (Excalidraw/Tldraw) hỗ trợ vẽ sơ đồ kiến trúc, giải thuật luồng dữ liệu, lược đồ ERD.
+  - Tự động lưu và xuất file PDF/PNG sơ đồ bảng vẽ đính kèm vào phần tài liệu buổi học để toàn bộ học viên xem lại sau giờ học.
+
+---
+
+### Phân hệ 24: Trợ Lý Chấm Code AI & Nhận Xét Giọng Nói (AI Code Review Assistant & Voice Feedback)
+
+Giải phóng thời gian chấm bài cho giảng viên và nâng cao chất lượng phản hồi sư phạm:
+
+- **FR-AI-GRD-01 (Trợ Lý Quét Mã Nguồn & Gợi Ý Nhận Xét Bằng AI):**
+  - Khi học sinh nộp bài làm Monaco Code Editor hoặc link GitHub, hệ thống tự động phân tích:
+    - Kiểm tra linter, phát hiện vi phạm Clean Code, lỗi rò rỉ tài nguyên (ví dụ: unclosed channels, memory leaks).
+    - AI sinh bản nháp nhận xét sư phạm (Draft Feedback): Chỉ ra điểm làm tốt, dòng code có vấn đề và gợi ý đoạn code tối ưu.
+  - Giảng viên soát xét nhanh bản nháp của AI, chỉnh sửa nếu cần và bấm **[Duyệt & Gửi điểm]** trong dưới 30 giây mỗi bài.
+- **FR-AI-GRD-02 (Chấm Điểm Bằng Giọng Nói - Voice Note Feedback):**
+  - Giảng viên bấm nút ghi âm trực tiếp trên trình duyệt để thu âm lời dặn dò, hướng dẫn cách sửa bài (thời lượng 30s - 2 phút).
+  - Tự động nén audio MP3/WebM và gắn vào phiếu chấm bài. Học viên và phụ huynh có thể vừa nghe lời thầy cô dặn dò vừa nhìn bài làm.
+
+---
+
+### Phân hệ 25: Hộp Thư Hỏi Đáp Tập Trung & Điều Phối Trợ Giảng (Unified Q&A Inbox & TA Delegation)
+
+Chấm dứt tình trạng trôi tin nhắn hỏi bài rải rác trên Zalo, Meet chat và comment video:
+
+- **FR-INBOX-01 (Hộp Thư Hỏi Đáp Tập Trung - Unified Teacher Inbox):**
+  - Gom toàn bộ thắc mắc của học viên từ video YouTube (Timestamped Q&A), câu hỏi bài tập về nhà và diễn đàn lớp học vào `/teacher/inbox`.
+  - Phân loại rõ ràng: *Chưa trả lời*, *Đang xử lý*, *Đã giải quyết*, *Có gắn cờ khẩn cấp*.
+- **FR-INBOX-02 (Điều Phối Câu Hỏi Cho Trợ Giảng Kèm SLA):**
+  - Giảng viên có thể phân công câu hỏi cụ thể cho Trợ giảng (TA) phụ trách kèm cam kết thời hạn trả lời (SLA 2 giờ).
+  - Đánh dấu **[Tích xanh: Câu trả lời chính xác]** để ghim câu trả lời mẫu cho toàn bộ học viên cùng khóa tham khảo.
+- **FR-INBOX-03 (Kho Đoạn Trả Lời Nhanh - Saved Quick Snippets):**
+  - Giảng viên lưu sẵn kho câu trả lời mẫu cho các lỗi thường gặp (CORS, Null Pointer, Docker port conflict, Async/Await bug) để giải đáp nhanh trong 1 chạm.
+
+---
+
+### Phân hệ 26: Sàn Dạy Thay Tự Động & Lịch Rảnh Giảng Viên (Substitute Marketplace & Teacher Availability)
+
+Tự động hóa hoàn toàn quy trình xin nghỉ đột xuất và hỗ trợ đổi ca giữa các đồng nghiệp:
+
+- **FR-SUB-01 (Cấu Hình Khung Giờ Rảnh Giảng Viên - Weekly Availability Calendar):**
+  - Giảng viên chủ động cập nhật lịch rảnh/bận định kỳ hàng tuần trên hệ thống để phòng đào tạo tự động né các khung giờ bận khi xếp lớp.
+- **FR-SUB-02 (Đề Xuất Nhờ Dạy Thay Ca Học - Substitute Request Marketplace):**
+  - Khi bận đột xuất, GV bấm **[Đề xuất nhờ dạy thay]** tại buổi học và chọn lý do (ốm, công tác, việc gia đình).
+  - Hệ thống tự động lọc danh sách các giảng viên cùng bộ môn đang rảnh ca đó và bắn thông báo mời nhận ca dạy thay.
+  - Khi có đồng nghiệp bấm **[Nhận ca dạy]**, hệ thống tự động:
+    1. Chuyển quyền phụ trách ca học cho giáo viên dạy thay.
+    2. Cập nhật phòng học/Meet link và gửi thông báo cho học sinh trong lớp.
+    3. Tự động tính thù lao ca dạy đó vào bảng lương tháng của người dạy thay.
+
+---
+
+### Phân hệ 27: Hồ Sơ Sư Phạm Nội Bộ & Ngân Hàng Bài Tập Mẫu (Student Pedagogical Notes & Assignment Bank)
+
+Nâng cao chất lượng đào tạo và tái sử dụng giáo án sư phạm:
+
+- **FR-PEDAGOGY-01 (Ghi Chú Sư Phạm Nội Bộ - Private Pedagogical Notes):**
+  - Giáo viên và Trợ giảng ghi chú tiến trình nhận thức, thói quen học tập hoặc khó khăn của từng học sinh (chỉ GV & TA xem được, bảo mật với học sinh/phụ huynh).
+  - Giúp việc bàn giao giữa Giảng viên chính và Trợ giảng liền mạch, bám sát các học viên yếu để kèm cặp riêng.
+- **FR-ASG-BANK-01 (Ngân Hàng Bài Tập Mẫu & Nhân Bản 1-Click - Assignment Bank & Cloner):**
+  - Kho lưu trữ bài tập mẫu, bộ test case và starter code cá nhân của giáo viên.
+  - Hỗ trợ nhân bản toàn bộ bài tập của khóa cũ sang lớp học mới mở trong 1 click mà không cần nhập lại đề bài.
+
+---
+
 ## 4. Bổ Sung Ma Trận User Stories (Acceptance Criteria)
 
 | Mã Story | Đối tượng | Hành động (User Story) | Tiêu chí chấp nhận (Acceptance Criteria) |
@@ -529,6 +606,14 @@ Cung cấp cho Ban Giám đốc và Quản lý Đào tạo cái nhìn toàn cả
 | **US-CONTRACT-01**| Học viên / Phụ huynh | Ký hợp đồng cam kết đào tạo điện tử | - Xem hợp đồng trực tuyến, ký xác nhận điện tử/OTP $\to$ tải file PDF có dấu mộc điện tử. |
 | **US-PDF-01** | Kế toán / Học viên | Tải biên lai thu học phí và chứng chỉ định dạng PDF | - Go PDF Engine sinh biên lai/chứng chỉ có mã QR xác thực trong dưới 1 giây. |
 | **US-BACKUP-01** | Hệ thống / DevOps | Sao lưu CSDL tự động hàng ngày lên Cloud Storage | - Cron 02:00 sáng tự động dump CSDL, mã hóa AES-256 và lưu trữ an toàn. |
+| **US-TEACH-COCKPIT-01** | Giảng viên | Điều khiển ca dạy tập trung qua Live Class Cockpit | - 1-click mở Meet/Zoom, điểm danh nhanh 1 chạm toàn bộ học sinh, tạo quick poll kiểm tra độ hiểu bài ngay trong giờ học. |
+| **US-TEACH-WHITEBOARD-01** | Giảng viên | Sử dụng bảng trắng kỹ thuật số giảng bài | - Vẽ sơ đồ kiến trúc, giải thuật trực tiếp; tự động lưu file đính kèm buổi học cho cả lớp xem lại. |
+| **US-TEACH-AI-01** | Giảng viên | Dùng trợ lý AI hỗ trợ chấm bài tập lập trình | - AI quét code review, phát hiện vi phạm Clean Code và gợi ý bản nháp nhận xét để giáo viên duyệt nhanh. |
+| **US-TEACH-VOICE-01** | Giảng viên | Ghi âm nhận xét dặn dò bài tập bằng giọng nói | - Thu âm 30s - 2 phút nhận xét trực tiếp trên trình duyệt, đính kèm vào phiếu chấm gửi cho học sinh/phụ huynh. |
+| **US-TEACH-INBOX-01** | Giảng viên | Quản lý thắc mắc tập trung và giao việc cho Trợ giảng | - Gom câu hỏi từ video/BTVN vào Unified Inbox; phân công cho Trợ giảng trả lời kèm deadline SLA 2 giờ. |
+| **US-TEACH-SUB-01** | Giảng viên | Nhờ đồng nghiệp dạy thay khi bận đột xuất | - Đăng ký nhờ dạy thay $\to$ hệ thống đề xuất đồng nghiệp rảnh ca nhận dạy $\to$ tự động tính thù lao vào bảng lương người dạy thay. |
+| **US-TEACH-NOTE-01** | Giảng viên | Ghi chú sư phạm nội bộ về học sinh | - Lưu nhận xét riêng tư về năng lực/thói quen học sinh, chia sẻ bảo mật với Trợ giảng để kèm cặp riêng. |
+| **US-TEACH-BANK-01** | Giảng viên | Tái sử dụng bài tập từ ngân hàng bài tập mẫu | - 1-click nhân bản bài tập, test case và starter code từ khóa trước sang lớp học mới. |
 
 
 

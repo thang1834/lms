@@ -2,7 +2,7 @@
 
 > **Dự án:** LMS Center Platform (Hệ thống Quản lý Học tập, Giảng viên & Vận hành Đào tạo Đa hình thức)  
 > **Tài liệu:** `docs/architecture.md`  
-> **Phiên bản:** 2.2.0 (Kiến trúc Go Backend chuẩn hóa theo blueprint `gmhafiz/go8` + Frontend Nuxt UI, bổ sung Multi-Campus, Make-up Scheduling, Quiz Bank & Churn Radar)  
+> **Phiên bản:** 2.3.0 (Kiến trúc Go Backend chuẩn hóa theo blueprint `gmhafiz/go8` + Frontend Nuxt UI, bổ sung Teacher Live Cockpit, AI Review, Whiteboards & Substitute Marketplace)  
 > **Ngày cập nhật:** 23/09/2026  
 
 ---
@@ -254,6 +254,24 @@ erDiagram
 
     StudentProfile ||--o{ Contract : signs_contract
     Course ||--o{ Contract : specifies_course
+
+    ClassSession ||--o{ ClassWhiteboard : has_whiteboards
+    TeacherProfile ||--o{ ClassWhiteboard : draws_whiteboard
+    ClassSession ||--o{ QuickPoll : hosts_polls
+    QuickPoll ||--o{ PollVote : collects_votes
+    StudentProfile ||--o{ PollVote : casts_vote
+
+    Submission ||--o{ AICodeReview : analyzed_by_ai
+    StudentProfile ||--o{ StudentPedagogicalNote : subject_student
+    TeacherProfile ||--o{ StudentPedagogicalNote : authored_teacher
+    Class ||--o{ StudentPedagogicalNote : in_class
+
+    TeacherProfile ||--o{ TeacherAvailability : configures_availability
+    ClassSession ||--o{ SubstituteRequest : requests_substitute
+    TeacherProfile ||--o{ SubstituteRequest : original_teacher
+    TeacherProfile ||--o{ SubstituteRequest : substitute_teacher
+    TeacherProfile ||--o{ AssignmentBank : owns_bank
+    Subject ||--o{ AssignmentBank : categorizes_asg_bank
 ```
 
 
@@ -919,6 +937,96 @@ erDiagram
 
 ---
 
+#### Nhóm 16: Không Gian Lớp Học Trực Tiếp & Bảng Trắng Kỹ Thuật Số (Live Cockpit & Whiteboards)
+
+48. **`class_whiteboards`** (Bảng trắng kỹ thuật số theo ca học):
+    - `id` (UUID, PK).
+    - `sessionId` (UUID, FK -> `class_sessions.id`).
+    - `teacherId` (UUID, FK -> `teacher_profiles.id`): Giáo viên vẽ bài giảng.
+    - `title` (String): Tiêu đề bản vẽ (ví dụ: "Sơ đồ kiến trúc Go Microservices").
+    - `boardData` (JSON): Tọa độ và nét vẽ Excalidraw/Tldraw elements.
+    - `exportPdfUrl` (String, Nullable): URL file PDF xuất ra đính kèm buổi học.
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+49. **`quick_polls`** (Khảo sát nhanh / Mini Quiz trong ca dạy):
+    - `id` (UUID, PK).
+    - `sessionId` (UUID, FK -> `class_sessions.id`).
+    - `questionText` (String): Câu hỏi kiểm tra độ hiểu bài (ví dụ: "Channel có đệm hay không đệm chặn goroutine gửi?").
+    - `options` (JSON): Danh sách lựa chọn `[{"id": "A", "text": "Có đệm"}, {"id": "B", "text": "Không đệm"}]`.
+    - `correctOptionId` (String, Nullable).
+    - `isActive` (Boolean, Default `true`): Đang mở bình chọn.
+    - `durationSeconds` (Int, Default `120`): Thời gian đếm ngược (2 phút).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+50. **`poll_votes`** (Phiếu bình chọn của học viên trong ca dạy):
+    - `id` (UUID, PK).
+    - `pollId` (UUID, FK -> `quick_polls.id`).
+    - `studentId` (UUID, FK -> `student_profiles.id`).
+    - `selectedOptionId` (String): Lựa chọn của học viên.
+    - `votedAt` (Timestamp, Default `now()`).
+    - Unique Constraint: `(pollId, studentId)`.
+
+---
+
+#### Nhóm 17: Trợ Lý Chấm Điểm AI, Nhận Xét Giọng Nói & Ghi Chú Sư Phạm (AI Code Review & Pedagogical Notes)
+
+51. **`ai_code_reviews`** (Bản nháp gợi ý nhận xét mã nguồn từ AI):
+    - `id` (UUID, PK).
+    - `submissionId` (UUID, FK -> `submissions.id`, Unique).
+    - `lintIssues` (JSON, Nullable): Danh sách lỗi cú pháp, vi phạm Clean Code.
+    - `suggestedScore` (Decimal, Nullable): Thang điểm AI đề xuất.
+    - `feedbackDraft` (Text): Lời nhận xét mẫu sư phạm do AI tạo.
+    - `status` (Enum: `PENDING`, `REVIEWED_BY_TEACHER`, `REJECTED`).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+52. **`student_pedagogical_notes`** (Ghi chú sư phạm nội bộ giữa Giáo viên và Trợ giảng):
+    - `id` (UUID, PK).
+    - `studentId` (UUID, FK -> `student_profiles.id`): Học sinh được ghi chú.
+    - `teacherId` (UUID, FK -> `teacher_profiles.id`): Giáo viên/Trợ giảng viết ghi chú.
+    - `classId` (UUID, FK -> `classes.id`).
+    - `noteContent` (Text): Nhận xét riêng tư (Điểm yếu, thái độ, phương pháp kèm riêng).
+    - `isSharedWithTA` (Boolean, Default `true`): Chia sẻ với Trợ giảng để phối hợp.
+    - *Bảo mật:* Tuyệt đối ẩn danh với Học viên và Phụ huynh.
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+---
+
+#### Nhóm 18: Lịch Rảnh, Đề Xuất Dạy Thay & Kho Bài Tập Mẫu (Substitute Marketplace & Assignment Bank)
+
+53. **`teacher_availabilities`** (Cấu hình khung giờ rảnh hàng tuần của giảng viên):
+    - `id` (UUID, PK).
+    - `teacherId` (UUID, FK -> `teacher_profiles.id`).
+    - `dayOfWeek` (Int, 1-7): Thứ trong tuần (2 = Thứ Hai, ..., 8 = Chủ Nhật).
+    - `startTime` (Time), `endTime` (Time): Khung giờ sẵn sàng nhận ca dạy.
+    - `isActive` (Boolean, Default `true`).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+54. **`substitute_requests`** (Yêu cầu nhờ đồng nghiệp dạy thay ca học):
+    - `id` (UUID, PK).
+    - `sessionId` (UUID, FK -> `class_sessions.id`): Buổi học cần nhờ dạy thay.
+    - `originalTeacherId` (UUID, FK -> `teacher_profiles.id`): Giáo viên chính nhờ dạy.
+    - `substituteTeacherId` (UUID, Nullable, FK -> `teacher_profiles.id`): Giáo viên đồng ý nhận ca.
+    - `reason` (Text): Lý do xin nghỉ / nhờ dạy thay.
+    - `compensationRate` (Decimal, Nullable): Mức thù lao ca dạy chuyển giao.
+    - `status` (Enum: `PENDING_OFFER`, `ACCEPTED`, `REJECTED`, `CANCELLED`).
+    - `resolvedAt` (Timestamp, Nullable).
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+55. **`assignment_banks`** (Kho lưu trữ bài tập mẫu & starter code của giảng viên):
+    - `id` (UUID, PK).
+    - `teacherId` (UUID, FK -> `teacher_profiles.id`): Chủ sở hữu bài tập mẫu.
+    - `subjectId` (UUID, FK -> `subjects.id`): Môn học tương ứng.
+    - `title` (String): Tiêu đề bài tập mẫu.
+    - `description` (Text): Đề bài Markdown.
+    - `format` (Enum: `CODE_MONACO`, `GITHUB_REPO`, `FILE_UPLOAD`).
+    - `starterCode` (Text, Nullable).
+    - `solutionCode` (Text, Nullable).
+    - `rubricCriteria` (JSON, Nullable).
+    - `isSharedWithCenter` (Boolean, Default `false`): Cho phép các GV khác cùng trung tâm tái sử dụng.
+    - *Audit Fields:* `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `deletedAt`, `deletedBy`.
+
+---
+
 ## 3. Ma Trận Phân Quyền Hạt Nhân RBAC (Granular RBAC Matrix)
 
 | Chức năng / Permission Code | Super Admin | Academic Manager (Giáo vụ) | Class Coordinator (Vận hành/CSKH) | Teacher (Giảng viên) | Examiner (Giám khảo) | Student (Học viên) | Parent (Phụ huynh) |
@@ -943,9 +1051,18 @@ erDiagram
 | Ghi chú chăm sóc học sinh vắng (`coordinatorNote`) | ✅ | ✅ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ | ❌ |
 | Giám sát Radar nguy cơ bỏ học (Churn Radar) & KPIs | ✅ | ✅ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ | ❌ |
 | Check-in/out ca dạy (chấm công giáo viên) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Bảng điều khiển ca dạy tập trung (Live Class Cockpit) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Vẽ sơ đồ trên Bảng trắng kỹ thuật số (Whiteboard) | ❌ | ❌ | ❌ | ✅ | ❌ | 👁️ (xem) | ❌ |
+| Tạo Quick Poll kiểm tra độ hiểu bài ngay tại lớp | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ (bình chọn) | ❌ |
 | Điểm danh học sinh lớp Hybrid (Offline/Online) | ✅ | ✅ | ✅ (hỗ trợ) | ✅ | ❌ | ❌ | ❌ |
 | Upload tài liệu học tập, slide, code mẫu | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Giao bài tập & Chấm BTVN trong lớp học | ✅ | ❌ | ❌ | ✅ (lớp phụ trách) | ❌ | ❌ | ❌ |
+| Sử dụng Trợ lý AI gợi ý Code Review & Voice Note | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Ghi chú sư phạm nội bộ (Pedagogical Notes) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Quản lý Hộp thư hỏi đáp (Unified Q&A) & Giao cho TA | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Đăng ký lịch rảnh & Đề xuất nhờ dạy thay (`substitute`) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Nhận ca dạy thay của đồng nghiệp cùng chuyên môn | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Quản lý Ngân hàng bài tập mẫu & Nhân bản 1-click | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Quản lý Ngân hàng câu hỏi & Tạo đề thi trắc nghiệm | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Làm bài kiểm tra trắc nghiệm online (Auto-Quiz) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
 | Chấm điểm đồ án tốt nghiệp & thuyết trình cuối khóa | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ |
@@ -1093,7 +1210,10 @@ LMS/
 │   │       ├── 20260923000011_create_website_settings_audit_logs.sql
 │   │       ├── 20260923000012_create_campuses_rooms_makeup.sql
 │   │       ├── 20260923000013_create_question_banks_quizzes.sql
-│   │       └── 20260923000014_create_contracts.sql
+│   │       ├── 20260923000014_create_contracts.sql
+│   │       ├── 20260923000015_create_teacher_cockpit_whiteboards.sql
+│   │       ├── 20260923000016_create_ai_code_reviews_pedagogy.sql
+│   │       └── 20260923000017_create_substitute_assignment_bank.sql
 │   ├── internal/
 │   │   ├── server/                            # Khởi tạo Server & Dependency Injection
 │   │   │   ├── server.go                      # Server struct & lifecycle
@@ -1111,6 +1231,10 @@ LMS/
 │   │   │   ├── subject/                       # Danh mục môn học động (CRUD)
 │   │   │   ├── campus/                        # Quản lý cơ sở, phòng học & chống trùng lịch (Conflict Guard)
 │   │   │   ├── class/                         # Khóa học, Module, Lớp học & Buổi học linh hoạt (TA optional)
+│   │   │   ├── cockpit/                       # Bảng điều khiển ca dạy Live Cockpit, Bảng trắng & Mini Polls
+│   │   │   ├── substitute/                    # Đăng ký lịch rảnh, sàn nhờ dạy thay & quyết toán thù lao
+│   │   │   ├── inbox/                         # Hộp thư hỏi đáp tập trung (Unified Q&A) & ủy quyền Trợ giảng
+│   │   │   ├── pedagogy/                      # Ghi chú sư phạm nội bộ & kho bài tập mẫu (Assignment Bank)
 │   │   │   ├── makeup/                        # Lên lịch học bù ghép lớp & kèm 1-1 cho học sinh vắng
 │   │   │   ├── attendance/                    # Điểm danh học sinh Hybrid & Chấm công giáo viên
 │   │   │   ├── quiz/                          # Ngân hàng câu hỏi, sinh đề thi ngẫu nhiên & auto-grading
@@ -1118,7 +1242,7 @@ LMS/
 │   │   │   ├── analytics/                     # KPIs Executive & Radar cảnh báo nguy cơ bỏ học (Churn Radar)
 │   │   │   ├── capstone/                      # Đồ án tốt nghiệp, Hội đồng Giám khảo & Rubric defense
 │   │   │   ├── course_video/                  # Trình phát video chống tua & Heartbeat anti-cheat
-│   │   │   ├── assignment/                    # BTVN, nộp code Monaco & Chấm điểm Rubric
+│   │   │   ├── assignment/                    # BTVN, nộp code Monaco, AI review & Voice note
 │   │   │   ├── discount/                      # Mã giảm giá, voucher khuyến mãi
 │   │   │   ├── billing/                       # Mua khóa học trực tuyến (Free 1-click / VietQR), webhook ngân hàng, thu tiền mặt
 │   │   │   ├── payroll/                       # Quản lý bậc lương, tính lương tháng tự động theo KPI & phạt trễ
