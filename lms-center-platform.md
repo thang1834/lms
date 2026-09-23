@@ -62,115 +62,111 @@ Hệ thống tích hợp toàn diện 10 trụ cột nghiệp vụ:
 
 ---
 
-## 3. Kiến Trúc Cơ Sở Dữ Liệu Nâng Cấp (Prisma Schema Overview)
+## 3. Kiến Trúc Cơ Sở Dữ Liệu & Mô Hình Thực Thể Go (Go Domain Models & Goose Migrations)
 
-```prisma
-// 1. Phân quyền RBAC
-model Role {
-  id          String           @id @default(uuid())
-  code        String           @unique // SUPER_ADMIN, ACADEMIC_MANAGER, CLASS_COORDINATOR, TEACHER, etc.
-  name        String
-  description String?
-  isSystem    Boolean          @default(false)
-  permissions RolePermission[]
-  users       UserRole[]
+Toàn bộ CSDL được phiên bản hóa qua **Goose SQL Migrations** (`database/migrations/*.sql`) và biểu diễn dưới dạng các struct Go trong kiến trúc `gmhafiz/go8`:
+
+```go
+package model
+
+import (
+	"time"
+	"github.com/google/uuid"
+)
+
+// 1. Phân quyền RBAC động
+type Role struct {
+	ID          uuid.UUID `json:"id" db:"id"`
+	Code        string    `json:"code" db:"code"` // SUPER_ADMIN, ACADEMIC_MANAGER, CLASS_COORDINATOR, TEACHER, TA, EXAMINER, STUDENT, PARENT
+	Name        string    `json:"name" db:"name"`
+	Description *string   `json:"description" db:"description"`
+	IsSystem    bool      `json:"isSystem" db:"is_system"`
 }
 
-model Permission {
-  id          String           @id @default(uuid())
-  code        String           @unique // e.g. classes.schedule, teachers.evaluate
-  name        String
-  module      String           // CLASSES, TEACHERS, ATTENDANCE, FINANCE
-  description String?
-  roles       RolePermission[]
+type Permission struct {
+	ID          uuid.UUID `json:"id" db:"id"`
+	Code        string    `json:"code" db:"code"` // classes.schedule, capstone.evaluate, etc.
+	Name        string    `json:"name" db:"name"`
+	Module      string    `json:"module" db:"module"`
+	Description *string   `json:"description" db:"description"`
 }
 
-model RolePermission {
-  id           String     @id @default(uuid())
-  roleId       String
-  permissionId String
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  @@unique([roleId, permissionId])
+// 2. Lớp học & Vận hành lớp (Trợ giảng là tùy chọn)
+type Class struct {
+	ID                     uuid.UUID  `json:"id" db:"id"`
+	CourseID               uuid.UUID  `json:"courseId" db:"course_id"`
+	Name                   string     `json:"name" db:"name"` // Ví dụ: FE-K32
+	ClassType              string     `json:"classType" db:"class_type"` // OFFLINE, ONLINE_VIRTUAL, HYBRID
+	MainTeacherID          uuid.UUID  `json:"mainTeacherId" db:"main_teacher_id"`
+	TaTeacherID            *uuid.UUID `json:"taTeacherId,omitempty" db:"ta_teacher_id"` // Trợ giảng Tùy chọn (Optional)
+	CoordinatorID          *uuid.UUID `json:"coordinatorId,omitempty" db:"coordinator_id"` // Chuyên viên Vận hành lớp
+	RoomName               *string    `json:"roomName,omitempty" db:"room_name"`
+	MeetURL                *string    `json:"meetUrl,omitempty" db:"meet_url"`
+	ScheduleRule           string     `json:"scheduleRule" db:"schedule_rule"` // JSON: [{"dayOfWeek": 2, "time": "19:30-21:30"}]
+	AttendanceAlertMinutes int        `json:"attendanceAlertMinutes" db:"attendance_alert_minutes"` // Mặc định 15p
+	Status                 string     `json:"status" db:"status"` // UPCOMING, ACTIVE, COMPLETED
 }
 
-model UserRole {
-  id         String   @id @default(uuid())
-  userId     String
-  roleId     String
-  assignedAt DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  @@unique([userId, roleId])
+// 3. Buổi học linh hoạt (Flexible Session Scheduling)
+type ClassSession struct {
+	ID                   uuid.UUID  `json:"id" db:"id"`
+	ClassID              uuid.UUID  `json:"classId" db:"class_id"`
+	SessionNumber        int        `json:"sessionNumber" db:"session_number"`
+	SessionDate          time.Time  `json:"sessionDate" db:"session_date"`
+	StartTime            string     `json:"startTime" db:"start_time"` // "19:30"
+	EndTime              string     `json:"endTime" db:"end_time"`     // "21:30"
+	AssignedTeacherID    *uuid.UUID `json:"assignedTeacherId,omitempty" db:"assigned_teacher_id"` // Giáo viên dạy thay
+	RoomName             *string    `json:"roomName,omitempty" db:"room_name"`
+	MeetURL              *string    `json:"meetUrl,omitempty" db:"meet_url"`
+	Topic                *string    `json:"topic,omitempty" db:"topic"`
+	Status               string     `json:"status" db:"status"` // SCHEDULED, RESCHEDULED, IN_PROGRESS, COMPLETED
+	RescheduleReason     *string    `json:"rescheduleReason,omitempty" db:"reschedule_reason"`
+	OriginalDate         *time.Time `json:"originalDate,omitempty" db:"original_date"`
+	AttendanceAlertSentAt *time.Time `json:"attendanceAlertSentAt,omitempty" db:"attendance_alert_sent_at"`
 }
 
-// 2. Lớp học & Vận hành lớp
-model Class {
-  id            String         @id @default(uuid())
-  courseId      String
-  name          String         // Mã lớp: FE-K32
-  classType     ClassType      // OFFLINE, ONLINE, HYBRID
-  mainTeacherId String
-  taTeacherId   String?
-  coordinatorId String?        // Chuyên viên Vận hành / CSKH lớp
-  roomName      String?
-  meetUrl       String?
-  scheduleRule  Json           // Quy tắc lặp: [{"dayOfWeek": 2, "time": "19:30-21:30"}]
-  sessions      ClassSession[]
-  // ... relations
-}
-
-// 3. Buổi học linh hoạt (Flexible Sessions)
-model ClassSession {
-  id                  String             @id @default(uuid())
-  classId             String
-  sessionNumber       Int
-  sessionDate         DateTime           @db.Date
-  startTime           String             // 19:30
-  endTime             String             // 21:30
-  assignedTeacherId   String?            // Hỗ trợ giáo viên dạy thay
-  roomName            String?            // Hỗ trợ đổi phòng riêng buổi này
-  meetUrl             String?            // Hỗ trợ đổi link meet riêng buổi này
-  topic               String?
-  status              SessionStatus      // SCHEDULED, RESCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
-  rescheduleReason    String?
-  originalDate        DateTime?          @db.Date
-  teacherAttendance   TeacherAttendance?
-  studentAttendances  StudentAttendance[]
-}
-
-// 4. Đánh giá chất lượng giáo viên
-model TeacherEvaluation {
-  id             String         @id @default(uuid())
-  teacherId      String
-  classId        String?
-  evaluatorId    String
-  evaluationType EvaluationType // MANAGER_AUDIT, STUDENT_SURVEY
-  criteriaScores Json           // Điểm chi tiết tiêu chí sư phạm, chuyên môn
-  overallScore   Decimal        @db.Decimal(3, 2)
-  comment        String
-  evaluatedAt    DateTime       @default(now())
+// 4. Hội đồng Giám khảo & Chấm đồ án tốt nghiệp
+type CapstoneEvaluation struct {
+	ID                uuid.UUID `json:"id" db:"id"`
+	ProjectID         uuid.UUID `json:"projectId" db:"project_id"`
+	ExaminerID        uuid.UUID `json:"examinerId" db:"examiner_id"`
+	ScoreCompletion   float64   `json:"scoreCompletion" db:"score_completion"`     // 30%
+	ScoreArchitecture float64   `json:"scoreArchitecture" db:"score_architecture"` // 25%
+	ScorePresentation float64   `json:"scorePresentation" db:"score_presentation"` // 25%
+	ScoreCreativity   float64   `json:"scoreCreativity" db:"score_creativity"`     // 20%
+	FinalScore        float64   `json:"finalScore" db:"final_score"`
+	EvaluationNotes   string    `json:"evaluationNotes" db:"evaluation_notes"`
+	EvaluatedAt       time.Time `json:"evaluatedAt" db:"evaluated_at"`
 }
 ```
 
 ---
 
-## 4. Kế Hoạch Triển Khai & Kiểm Thử (Nuxt UI + Go-chi Stack)
+## 4. Kế Hoạch Triển Khai & Kiểm Thử Tự Động Với Taskfile (Go8 Workflow)
 
-Toàn bộ các tác vụ sẽ được phân rã theo cấu trúc Monorepo (`frontend/` và `backend/`), tích hợp giao diện xếp lịch trực quan, cổng vận hành lớp và hệ thống đánh giá giáo viên.
+Toàn bộ các tác vụ backend được tự động hóa qua `Taskfile.yml` theo chuẩn blueprint `gmhafiz/go8`:
 
 ```bash
-# 1. Kiểm tra mã nguồn Backend Go-chi
+# 1. Chạy Backend API (Go-chi + Hot reload Air)
 cd backend
-go vet ./...
-go test -v ./...
+task dev
 
-# 2. Kiểm tra mã nguồn Frontend Nuxt UI
+# 2. Quản lý CSDL (Goose Migrations)
+task migrate
+
+# 3. Tự động sinh tài liệu Swagger/OpenAPI từ Go Handlers
+task swagger
+
+# 4. Kiểm tra mã nguồn, linting & quét lỗ hổng bảo mật
+task check
+task test
+
+# 5. Kiểm tra mã nguồn Frontend Nuxt UI (Vue 3 / TypeScript)
 cd ../frontend
 npm run typecheck
 npm run lint
 
-# 3. Kiểm tra tính toàn vẹn AG Kit
+# 6. Kiểm tra tính toàn vẹn AG Kit
 cd ..
 python .agents/scripts/validate_kit.py
 ```

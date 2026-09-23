@@ -14,8 +14,8 @@
 ```mermaid
 flowchart TD
     E2E["1. Kiểm Thử Toàn Trình (E2E Tests)<br/>Playwright - Luồng nộp code Monaco, Điểm danh Hybrid, VietQR"]
-    Integration["2. Kiểm Thử Tích Hợp (Integration Tests)<br/>Next.js Server Actions, Prisma DB Queries, NextAuth RBAC"]
-    Unit["3. Kiểm Thử Đơn Vị (Unit Tests)<br/>Zod Schemas, VietQR Encoder, Tính thù lao giảng viên, Tính điểm Gradebook"]
+    Integration["2. Kiểm Thử Tích Hợp (Integration Tests)<br/>Go Handlers & UseCases, PostgreSQL Queries, Chi JWT & RBAC Middleware"]
+    Unit["3. Kiểm Thử Đơn Vị (Unit Tests)<br/>Go DTO Validators, VietQR Encoder, Tính thù lao giảng viên, Tính điểm Gradebook"]
 
     E2E --> Integration
     Integration --> Unit
